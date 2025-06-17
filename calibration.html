@@ -1,0 +1,950 @@
+<!doctype html>
+<html class="no-js" lang="en">
+  <head><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script><meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width,initial-scale=1"/>
+    <meta name="color-scheme" content="light dark"><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+<link rel="index" title="Index" href="genindex.html" /><link rel="search" title="Search" href="search.html" /><link rel="prev" title="&lt;no title&gt;" href="intro.html" />
+
+    <!-- Generated with Sphinx 5.0.2 and Furo 2022.12.07 -->
+        <title>Basic usage - MicroCalibrate documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?digest=91d0f0d1c444bdcb17a68e833c7a53903343c195" />
+    <link rel="stylesheet" type="text/css" href="_static/togglebutton.css" />
+    <link rel="stylesheet" type="text/css" href="_static/copybutton.css" />
+    <link rel="stylesheet" type="text/css" href="_static/mystnb.4510f1fc1dee50b3e5859aac5469c37c29e427902b24a333a5f9fcb2f0b3ac41.css" />
+    <link rel="stylesheet" type="text/css" href="_static/sphinx-thebe.css" />
+    <link rel="stylesheet" type="text/css" href="_static/design-style.4045f2051d55cab465a707391d5b2007.min.css" />
+    <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?digest=30d1aed668e5c3a91c3e3bf6a60b675221979f0e" />
+    <link rel="stylesheet" type="text/css" href="_static/style.css" />
+    <link rel="stylesheet" type="text/css" href="_static/style.css" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #f8f8f8;
+  --color-code-foreground: black;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-half" viewBox="0 0 24 24">
+    <title>Auto light/dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-shadow">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M13 12h5" />
+      <path d="M13 15h4" />
+      <path d="M13 18h1" />
+      <path d="M13 9h4" />
+      <path d="M13 6h1" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc">
+<label class="overlay sidebar-overlay" for="__navigation">
+  <div class="visually-hidden">Hide navigation sidebar</div>
+</label>
+<label class="overlay toc-overlay" for="__toc">
+  <div class="visually-hidden">Hide table of contents sidebar</div>
+</label>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <div class="visually-hidden">Toggle site navigation sidebar</div>
+        <i class="icon"><svg><use href="#svg-menu"></use></svg></i>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="intro.html"><div class="brand">MicroCalibrate documentation</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle">
+          <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
+          <svg class="theme-icon-when-auto"><use href="#svg-sun-half"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
+        <div class="visually-hidden">Toggle table of contents sidebar</div>
+        <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand centered" href="intro.html">
+  
+  <div class="sidebar-logo-container">
+    <img class="sidebar-logo" src="_static/logo.png" alt="Logo"/>
+  </div>
+  
+  <span class="sidebar-brand-text">MicroCalibrate documentation</span>
+  
+</a><form class="sidebar-search-container" method="get" action="search.html" role="search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <ul class="current">
+<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">Basic usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="#example">Example</a></li>
+</ul>
+
+</div>
+</div>
+
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          
+<div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle">
+              <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
+              <svg class="theme-icon-when-auto"><use href="#svg-sun-half"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
+            <div class="visually-hidden">Toggle table of contents sidebar</div>
+            <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
+          </label>
+        </div>
+        <article role="main">
+          <p>## Calibration</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">Calibration</span></code> class provides a way to adjust weights of observations in a dataset to match specified target values. This is commonly used in survey research and policy modeling for rebalancing datasets to better represent desired population characteristics.</p>
+<p>The calibration process uses an optimization algorithm to find weights that minimize the distance from the original weights while achieving the target constraints.</p>
+<section id="basic-usage">
+<h1>Basic usage<a class="headerlink" href="#basic-usage" title="Permalink to this heading">#</a></h1>
+<section id="parameters">
+<h2>Parameters<a class="headerlink" href="#parameters" title="Permalink to this heading">#</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">__init__(data,</span> <span class="pre">weights,</span> <span class="pre">targets)</span></code></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">data</span></code> (pd.DataFrame): The dataset to be calibrated. This should contain all the variables you want to use for calibration.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">weights</span></code> (np.ndarray): Initial weights for each observation in the dataset. Typically starts as an array of ones for equal weighting.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">targets</span></code> (np.ndarray): Target values that the calibration process should achieve. These correspond to the desired weighted sums.</p></li>
+</ul>
+<p>Calibration can be easily done by initializing the <code class="docutils literal notranslate"><span class="pre">Calibration</span></code> class, passing in the parameters above. Then <code class="docutils literal notranslate"><span class="pre">calibrate()</span></code> method performs the actual calibration using the reweight function. This method:</p>
+<ul class="simple">
+<li><p>Adjusts the weights to better match the target values</p></li>
+<li><p>May subsample the data for efficiency</p></li>
+<li><p>Updates both <code class="docutils literal notranslate"><span class="pre">self.weights</span></code> and <code class="docutils literal notranslate"><span class="pre">self.data</span></code> with the calibrated results</p></li>
+</ul>
+</section>
+</section>
+<section id="example">
+<h1>Example<a class="headerlink" href="#example" title="Permalink to this heading">#</a></h1>
+<p>Below is a complete example showing how to calibrate a dataset to match income targets for specific age groups:</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">microcalibrate.calibration</span><span class="w"> </span><span class="kn">import</span> <span class="n">Calibration</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+
+<span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span>
+    <span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="c1"># Create a sample dataset with age and income data</span>
+<span class="n">random_generator</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">default_rng</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+<span class="n">data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span>
+    <span class="s2">&quot;age&quot;</span><span class="p">:</span> <span class="n">random_generator</span><span class="o">.</span><span class="n">integers</span><span class="p">(</span><span class="mi">18</span><span class="p">,</span> <span class="mi">70</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">100</span><span class="p">),</span>
+    <span class="s2">&quot;income&quot;</span><span class="p">:</span> <span class="n">random_generator</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mi">40000</span><span class="p">,</span> <span class="mi">50000</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">100</span><span class="p">),</span>
+<span class="p">})</span>
+
+<span class="c1"># Set initial weights (all one in this example)</span>
+<span class="n">weights</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">))</span>
+
+<span class="c1"># Calculate target values: total income for age groups 20-30 and 40-50 (as an example) or employ existing targets</span>
+<span class="n">targets_matrix</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span>
+    <span class="s2">&quot;income_aged_20_30&quot;</span><span class="p">:</span> <span class="p">((</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;age&quot;</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="mi">20</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;age&quot;</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="mi">30</span><span class="p">))</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span> <span class="o">*</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;income&quot;</span><span class="p">],</span>
+    <span class="s2">&quot;income_aged_40_50&quot;</span><span class="p">:</span> <span class="p">((</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;age&quot;</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="mi">40</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;age&quot;</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="mi">50</span><span class="p">))</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span> <span class="o">*</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;income&quot;</span><span class="p">],</span>
+<span class="p">})</span>
+
+<span class="c1"># 15% higher than the sum of data with the original weights</span>
+<span class="n">targets</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span>
+    <span class="p">(</span><span class="n">targets_matrix</span><span class="p">[</span><span class="s2">&quot;income_aged_20_30&quot;</span><span class="p">]</span> <span class="o">*</span> <span class="n">weights</span> <span class="o">*</span> <span class="mf">1.15</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(),</span> 
+    <span class="p">(</span><span class="n">targets_matrix</span><span class="p">[</span><span class="s2">&quot;income_aged_40_50&quot;</span><span class="p">]</span> <span class="o">*</span> <span class="n">weights</span> <span class="o">*</span> <span class="mf">1.15</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(),</span> 
+<span class="p">])</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Original weights: </span><span class="si">{</span><span class="n">weights</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Original targets: </span><span class="si">{</span><span class="n">targets</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Original weights: [1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1.
+ 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1.
+ 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1.
+ 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1.
+ 1. 1. 1. 1.]
+Original targets: [ 245346.0788293  1237963.09787856]
+</pre></div>
+</div>
+</div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Initialize the Calibration object</span>
+<span class="n">calibrator</span> <span class="o">=</span> <span class="n">Calibration</span><span class="p">(</span>
+    <span class="n">loss_matrix</span><span class="o">=</span><span class="n">targets_matrix</span><span class="p">,</span>
+    <span class="n">weights</span><span class="o">=</span><span class="n">weights</span><span class="p">,</span> 
+    <span class="n">targets</span><span class="o">=</span><span class="n">targets</span><span class="p">,</span>
+    <span class="n">noise_level</span><span class="o">=</span><span class="mf">0.05</span><span class="p">,</span>
+    <span class="n">epochs</span><span class="o">=</span><span class="mi">528</span><span class="p">,</span>
+    <span class="n">learning_rate</span><span class="o">=</span><span class="mf">0.01</span><span class="p">,</span>
+    <span class="n">dropout_rate</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+    <span class="n">subsample_every</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="c1"># Perform the calibration</span>
+<span class="n">calibrator</span><span class="o">.</span><span class="n">calibrate</span><span class="p">()</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Original dataset size: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">targets_matrix</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Calibrated dataset size: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">calibrator</span><span class="o">.</span><span class="n">loss_matrix</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Number of calibrated weights: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">calibrator</span><span class="o">.</span><span class="n">weights</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Starting calibration process for targets [&#39;income_aged_20_30&#39; &#39;income_aged_40_50&#39;]: [ 245346.0788293  1237963.09787856]
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Original weights - mean: 1.0000, std: 0.0000
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Initial weights after noise - mean: 1.0229, std: 0.0142
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Reweighting progress:   0%|          | 0/528 [00:00&lt;?, ?epoch/s]
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Reweighting progress:   0%|          | 0/528 [00:00&lt;?, ?epoch/s, loss=0.0127, count_observations=100, weights_mean=1.02, weights_std=0.0142, weights_min=1]
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Within 10% from targets: 0.00% 
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Reweighting progress:   0%|          | 0/528 [00:00&lt;?, ?epoch/s, loss=0.000578, count_observations=100, weights_mean=1.04, weights_std=0.051, weights_min=0.926]
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Within 10% from targets: 100.00% 
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Epoch   10: Loss = 0.000578, Change = 0.012135 (improving)
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Reweighting progress:   0%|          | 0/528 [00:00&lt;?, ?epoch/s, loss=0.000575, count_observations=100, weights_mean=1.05, weights_std=0.0653, weights_min=0.889]
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Within 10% from targets: 100.00% 
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Epoch   20: Loss = 0.000575, Change = 0.000004 (improving)
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Reweighting progress:   0%|          | 0/528 [00:00&lt;?, ?epoch/s, loss=0.000211, count_observations=100, weights_mean=1.05, weights_std=0.0542, weights_min=0.904]
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Within 10% from targets: 100.00% 
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Epoch   30: Loss = 0.000211, Change = 0.000364 (improving)
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Reweighting progress:   0%|          | 0/528 [00:00&lt;?, ?epoch/s, loss=9.28e-5, count_observations=100, weights_mean=1.04, weights_std=0.0503, weights_min=0.914] 
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Within 10% from targets: 100.00% 
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Epoch   40: Loss = 0.000093, Change = 0.000118 (improving)
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Reweighting progress:   0%|          | 0/528 [00:00&lt;?, ?epoch/s, loss=6.76e-7, count_observations=100, weights_mean=1.05, weights_std=0.0537, weights_min=0.905]
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Within 10% from targets: 100.00% 
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Epoch   50: Loss = 0.000001, Change = 0.000092 (improving)
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Reweighting progress:   0%|          | 0/528 [00:00&lt;?, ?epoch/s, loss=1.33e-5, count_observations=100, weights_mean=1.05, weights_std=0.0551, weights_min=0.902]
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Within 10% from targets: 100.00% 
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Epoch   60: Loss = 0.000013, Change = -0.000013 (worsening)
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Reweighting progress:   0%|          | 0/528 [00:00&lt;?, ?epoch/s, loss=3.71e-6, count_observations=100, weights_mean=1.04, weights_std=0.0533, weights_min=0.905]
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Within 10% from targets: 100.00% 
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Epoch   70: Loss = 0.000004, Change = 0.000010 (improving)
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Reweighting progress:   0%|          | 0/528 [00:00&lt;?, ?epoch/s, loss=1.6e-6, count_observations=100, weights_mean=1.04, weights_std=0.0534, weights_min=0.905] 
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Within 10% from targets: 100.00% 
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Epoch   80: Loss = 0.000002, Change = 0.000002 (improving)
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Reweighting progress:   0%|          | 0/528 [00:00&lt;?, ?epoch/s, loss=7.79e-7, count_observations=100, weights_mean=1.05, weights_std=0.0541, weights_min=0.903]
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Within 10% from targets: 100.00% 
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Epoch   90: Loss = 0.000001, Change = 0.000001 (improving)
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Reweighting progress:   0%|          | 0/528 [00:00&lt;?, ?epoch/s, loss=1.13e-7, count_observations=100, weights_mean=1.05, weights_std=0.0536, weights_min=0.904]
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Within 10% from targets: 100.00% 
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Epoch  100: Loss = 0.000000, Change = 0.000001 (improving)
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Reweighting progress:   0%|          | 0/528 [00:00&lt;?, ?epoch/s, loss=3.37e-8, count_observations=100, weights_mean=1.05, weights_std=0.0537, weights_min=0.904]
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Within 10% from targets: 100.00% 
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Epoch  110: Loss = 0.000000, Change = 0.000000 (improving)
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Reweighting progress:   0%|          | 0/528 [00:00&lt;?, ?epoch/s, loss=2.54e-8, count_observations=100, weights_mean=1.05, weights_std=0.0538, weights_min=0.904]
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Within 10% from targets: 100.00% 
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Epoch  120: Loss = 0.000000, Change = 0.000000 (improving)
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Reweighting progress:  23%|██▎       | 121/528 [00:00&lt;00:00, 1188.39epoch/s, loss=2.54e-8, count_observations=100, weights_mean=1.05, weights_std=0.0538, weights_min=0.904]
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Reweighting progress:  23%|██▎       | 121/528 [00:00&lt;00:00, 1188.39epoch/s, loss=6.37e-9, count_observations=100, weights_mean=1.05, weights_std=0.0537, weights_min=0.904]
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Within 10% from targets: 100.00% 
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Epoch  130: Loss = 0.000000, Change = 0.000000 (improving)
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Reweighting progress:  23%|██▎       | 121/528 [00:00&lt;00:00, 1188.39epoch/s, loss=7.15e-10, count_observations=100, weights_mean=1.05, weights_std=0.0538, weights_min=0.904]
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Within 10% from targets: 100.00% 
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Epoch  140: Loss = 0.000000, Change = 0.000000 (improving)
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Reweighting progress:  23%|██▎       | 121/528 [00:00&lt;00:00, 1188.39epoch/s, loss=5.96e-10, count_observations=100, weights_mean=1.05, weights_std=0.0538, weights_min=0.904]
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Within 10% from targets: 100.00% 
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Epoch  150: Loss = 0.000000, Change = 0.000000 (improving)
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Reweighting progress:  23%|██▎       | 121/528 [00:00&lt;00:00, 1188.39epoch/s, loss=4.57e-10, count_observations=100, weights_mean=1.05, weights_std=0.0537, weights_min=0.904]
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Within 10% from targets: 100.00% 
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Epoch  160: Loss = 0.000000, Change = 0.000000 (improving)
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Reweighting progress:  23%|██▎       | 121/528 [00:00&lt;00:00, 1188.39epoch/s, loss=1.78e-10, count_observations=100, weights_mean=1.05, weights_std=0.0538, weights_min=0.904]
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Within 10% from targets: 100.00% 
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Epoch  170: Loss = 0.000000, Change = 0.000000 (improving)
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Reweighting progress:  23%|██▎       | 121/528 [00:00&lt;00:00, 1188.39epoch/s, loss=4.91e-11, count_observations=100, weights_mean=1.05, weights_std=0.0537, weights_min=0.904]
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Within 10% from targets: 100.00% 
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Epoch  180: Loss = 0.000000, Change = 0.000000 (improving)
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Reweighting progress:  23%|██▎       | 121/528 [00:00&lt;00:00, 1188.39epoch/s, loss=1.27e-11, count_observations=100, weights_mean=1.05, weights_std=0.0538, weights_min=0.904]
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Within 10% from targets: 100.00% 
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Epoch  190: Loss = 0.000000, Change = 0.000000 (improving)
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Reweighting progress:  23%|██▎       | 121/528 [00:00&lt;00:00, 1188.39epoch/s, loss=4.93e-12, count_observations=100, weights_mean=1.05, weights_std=0.0538, weights_min=0.904]
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Within 10% from targets: 100.00% 
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Epoch  200: Loss = 0.000000, Change = 0.000000 (improving)
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Reweighting progress:  23%|██▎       | 121/528 [00:00&lt;00:00, 1188.39epoch/s, loss=1.96e-12, count_observations=100, weights_mean=1.05, weights_std=0.0538, weights_min=0.904]
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Within 10% from targets: 100.00% 
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Epoch  210: Loss = 0.000000, Change = 0.000000 (improving)
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Reweighting progress:  23%|██▎       | 121/528 [00:00&lt;00:00, 1188.39epoch/s, loss=6.35e-13, count_observations=100, weights_mean=1.05, weights_std=0.0538, weights_min=0.904]
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Within 10% from targets: 100.00% 
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Epoch  220: Loss = 0.000000, Change = 0.000000 (improving)
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Reweighting progress:  23%|██▎       | 121/528 [00:00&lt;00:00, 1188.39epoch/s, loss=2.68e-13, count_observations=100, weights_mean=1.05, weights_std=0.0538, weights_min=0.904]
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Within 10% from targets: 100.00% 
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Epoch  230: Loss = 0.000000, Change = 0.000000 (improving)
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Reweighting progress:  23%|██▎       | 121/528 [00:00&lt;00:00, 1188.39epoch/s, loss=6.41e-14, count_observations=100, weights_mean=1.05, weights_std=0.0538, weights_min=0.904]
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Within 10% from targets: 100.00% 
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Epoch  240: Loss = 0.000000, Change = 0.000000 (improving)
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Reweighting progress:  46%|████▌     | 243/528 [00:00&lt;00:00, 1202.78epoch/s, loss=6.41e-14, count_observations=100, weights_mean=1.05, weights_std=0.0538, weights_min=0.904]
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Reweighting progress:  46%|████▌     | 243/528 [00:00&lt;00:00, 1202.78epoch/s, loss=2.33e-14, count_observations=100, weights_mean=1.05, weights_std=0.0538, weights_min=0.904]
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Within 10% from targets: 100.00% 
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Epoch  250: Loss = 0.000000, Change = 0.000000 (improving)
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Reweighting progress:  46%|████▌     | 243/528 [00:00&lt;00:00, 1202.78epoch/s, loss=8.11e-15, count_observations=100, weights_mean=1.05, weights_std=0.0538, weights_min=0.904]
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Within 10% from targets: 100.00% 
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Epoch  260: Loss = 0.000000, Change = 0.000000 (improving)
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Reweighting progress:  46%|████▌     | 243/528 [00:00&lt;00:00, 1202.78epoch/s, loss=2.03e-15, count_observations=100, weights_mean=1.05, weights_std=0.0538, weights_min=0.904]
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Within 10% from targets: 100.00% 
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Epoch  270: Loss = 0.000000, Change = 0.000000 (improving)
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Reweighting progress:  46%|████▌     | 243/528 [00:00&lt;00:00, 1202.78epoch/s, loss=2.03e-15, count_observations=100, weights_mean=1.05, weights_std=0.0538, weights_min=0.904]
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Within 10% from targets: 100.00% 
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Epoch  280: Loss = 0.000000, Change = 0.000000 (worsening)
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Reweighting progress:  46%|████▌     | 243/528 [00:00&lt;00:00, 1202.78epoch/s, loss=0, count_observations=100, weights_mean=1.05, weights_std=0.0538, weights_min=0.904]       
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Within 10% from targets: 100.00% 
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Epoch  290: Loss = 0.000000, Change = 0.000000 (improving)
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Reweighting progress:  46%|████▌     | 243/528 [00:00&lt;00:00, 1202.78epoch/s, loss=2.03e-15, count_observations=100, weights_mean=1.05, weights_std=0.0538, weights_min=0.904]
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Within 10% from targets: 100.00% 
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Epoch  300: Loss = 0.000000, Change = -0.000000 (worsening)
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Reweighting progress:  46%|████▌     | 243/528 [00:00&lt;00:00, 1202.78epoch/s, loss=2.03e-15, count_observations=100, weights_mean=1.05, weights_std=0.0538, weights_min=0.904]
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Within 10% from targets: 100.00% 
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Epoch  310: Loss = 0.000000, Change = 0.000000 (worsening)
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Reweighting progress:  46%|████▌     | 243/528 [00:00&lt;00:00, 1202.78epoch/s, loss=2.03e-15, count_observations=100, weights_mean=1.05, weights_std=0.0538, weights_min=0.904]
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Within 10% from targets: 100.00% 
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Epoch  320: Loss = 0.000000, Change = 0.000000 (worsening)
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Reweighting progress:  46%|████▌     | 243/528 [00:00&lt;00:00, 1202.78epoch/s, loss=0, count_observations=100, weights_mean=1.05, weights_std=0.0538, weights_min=0.904]       
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Within 10% from targets: 100.00% 
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Epoch  330: Loss = 0.000000, Change = 0.000000 (improving)
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Reweighting progress:  46%|████▌     | 243/528 [00:00&lt;00:00, 1202.78epoch/s, loss=2.03e-15, count_observations=100, weights_mean=1.05, weights_std=0.0538, weights_min=0.904]
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Within 10% from targets: 100.00% 
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Epoch  340: Loss = 0.000000, Change = -0.000000 (worsening)
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Reweighting progress:  46%|████▌     | 243/528 [00:00&lt;00:00, 1202.78epoch/s, loss=2.03e-15, count_observations=100, weights_mean=1.05, weights_std=0.0538, weights_min=0.904]
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Within 10% from targets: 100.00% 
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Epoch  350: Loss = 0.000000, Change = 0.000000 (worsening)
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Reweighting progress:  46%|████▌     | 243/528 [00:00&lt;00:00, 1202.78epoch/s, loss=0, count_observations=100, weights_mean=1.05, weights_std=0.0538, weights_min=0.904]       
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Within 10% from targets: 100.00% 
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Epoch  360: Loss = 0.000000, Change = 0.000000 (improving)
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Reweighting progress:  69%|██████▉   | 364/528 [00:00&lt;00:00, 1199.14epoch/s, loss=0, count_observations=100, weights_mean=1.05, weights_std=0.0538, weights_min=0.904]
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Reweighting progress:  69%|██████▉   | 364/528 [00:00&lt;00:00, 1199.14epoch/s, loss=2.03e-15, count_observations=100, weights_mean=1.05, weights_std=0.0538, weights_min=0.904]
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Within 10% from targets: 100.00% 
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Epoch  370: Loss = 0.000000, Change = -0.000000 (worsening)
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Reweighting progress:  69%|██████▉   | 364/528 [00:00&lt;00:00, 1199.14epoch/s, loss=2.03e-15, count_observations=100, weights_mean=1.05, weights_std=0.0538, weights_min=0.904]
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Within 10% from targets: 100.00% 
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Epoch  380: Loss = 0.000000, Change = 0.000000 (worsening)
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Reweighting progress:  69%|██████▉   | 364/528 [00:00&lt;00:00, 1199.14epoch/s, loss=0, count_observations=100, weights_mean=1.05, weights_std=0.0538, weights_min=0.904]       
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Within 10% from targets: 100.00% 
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Epoch  390: Loss = 0.000000, Change = 0.000000 (improving)
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Reweighting progress:  69%|██████▉   | 364/528 [00:00&lt;00:00, 1199.14epoch/s, loss=2.03e-15, count_observations=100, weights_mean=1.05, weights_std=0.0538, weights_min=0.904]
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Within 10% from targets: 100.00% 
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Epoch  400: Loss = 0.000000, Change = -0.000000 (worsening)
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Reweighting progress:  69%|██████▉   | 364/528 [00:00&lt;00:00, 1199.14epoch/s, loss=2.03e-15, count_observations=100, weights_mean=1.05, weights_std=0.0538, weights_min=0.904]
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Within 10% from targets: 100.00% 
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Epoch  410: Loss = 0.000000, Change = 0.000000 (worsening)
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Reweighting progress:  69%|██████▉   | 364/528 [00:00&lt;00:00, 1199.14epoch/s, loss=0, count_observations=100, weights_mean=1.05, weights_std=0.0538, weights_min=0.904]       
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Within 10% from targets: 100.00% 
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Epoch  420: Loss = 0.000000, Change = 0.000000 (improving)
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Reweighting progress:  69%|██████▉   | 364/528 [00:00&lt;00:00, 1199.14epoch/s, loss=2.03e-15, count_observations=100, weights_mean=1.05, weights_std=0.0538, weights_min=0.904]
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Within 10% from targets: 100.00% 
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Epoch  430: Loss = 0.000000, Change = -0.000000 (worsening)
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Reweighting progress:  69%|██████▉   | 364/528 [00:00&lt;00:00, 1199.14epoch/s, loss=2.03e-15, count_observations=100, weights_mean=1.05, weights_std=0.0538, weights_min=0.904]
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Within 10% from targets: 100.00% 
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Epoch  440: Loss = 0.000000, Change = 0.000000 (worsening)
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Reweighting progress:  69%|██████▉   | 364/528 [00:00&lt;00:00, 1199.14epoch/s, loss=0, count_observations=100, weights_mean=1.05, weights_std=0.0538, weights_min=0.904]       
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Within 10% from targets: 100.00% 
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Epoch  450: Loss = 0.000000, Change = 0.000000 (improving)
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Reweighting progress:  69%|██████▉   | 364/528 [00:00&lt;00:00, 1199.14epoch/s, loss=2.03e-15, count_observations=100, weights_mean=1.05, weights_std=0.0538, weights_min=0.904]
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Within 10% from targets: 100.00% 
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Epoch  460: Loss = 0.000000, Change = -0.000000 (worsening)
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Reweighting progress:  69%|██████▉   | 364/528 [00:00&lt;00:00, 1199.14epoch/s, loss=2.03e-15, count_observations=100, weights_mean=1.05, weights_std=0.0538, weights_min=0.904]
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Within 10% from targets: 100.00% 
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Epoch  470: Loss = 0.000000, Change = 0.000000 (worsening)
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Reweighting progress:  69%|██████▉   | 364/528 [00:00&lt;00:00, 1199.14epoch/s, loss=0, count_observations=100, weights_mean=1.05, weights_std=0.0538, weights_min=0.904]       
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Within 10% from targets: 100.00% 
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Epoch  480: Loss = 0.000000, Change = 0.000000 (improving)
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Reweighting progress:  92%|█████████▏| 486/528 [00:00&lt;00:00, 1205.42epoch/s, loss=0, count_observations=100, weights_mean=1.05, weights_std=0.0538, weights_min=0.904]
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Reweighting progress:  92%|█████████▏| 486/528 [00:00&lt;00:00, 1205.42epoch/s, loss=2.03e-15, count_observations=100, weights_mean=1.05, weights_std=0.0538, weights_min=0.904]
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Within 10% from targets: 100.00% 
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Epoch  490: Loss = 0.000000, Change = -0.000000 (worsening)
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Reweighting progress:  92%|█████████▏| 486/528 [00:00&lt;00:00, 1205.42epoch/s, loss=2.03e-15, count_observations=100, weights_mean=1.05, weights_std=0.0538, weights_min=0.904]
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Within 10% from targets: 100.00% 
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Epoch  500: Loss = 0.000000, Change = 0.000000 (worsening)
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Reweighting progress:  92%|█████████▏| 486/528 [00:00&lt;00:00, 1205.42epoch/s, loss=0, count_observations=100, weights_mean=1.05, weights_std=0.0538, weights_min=0.904]       
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Within 10% from targets: 100.00% 
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Epoch  510: Loss = 0.000000, Change = 0.000000 (improving)
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Reweighting progress:  92%|█████████▏| 486/528 [00:00&lt;00:00, 1205.42epoch/s, loss=2.03e-15, count_observations=100, weights_mean=1.05, weights_std=0.0538, weights_min=0.904]
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Within 10% from targets: 100.00% 
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Epoch  520: Loss = 0.000000, Change = -0.000000 (worsening)
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Reweighting progress: 100%|██████████| 528/528 [00:00&lt;00:00, 1201.69epoch/s, loss=2.03e-15, count_observations=100, weights_mean=1.05, weights_std=0.0538, weights_min=0.904]
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:microcalibrate.reweight:Reweighting completed. Final sample size: 100
+</pre></div>
+</div>
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Original dataset size: 100
+Calibrated dataset size: 100
+Number of calibrated weights: 100
+</pre></div>
+</div>
+</div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Calculate final weighted totals</span>
+<span class="n">final_totals</span> <span class="o">=</span> <span class="n">targets_matrix</span><span class="o">.</span><span class="n">mul</span><span class="p">(</span><span class="n">calibrator</span><span class="o">.</span><span class="n">weights</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="o">.</span><span class="n">values</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Target totals: </span><span class="si">{</span><span class="n">targets</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Final calibrated totals: </span><span class="si">{</span><span class="n">final_totals</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Difference: </span><span class="si">{</span><span class="n">final_totals</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">targets</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Relative error: </span><span class="si">{</span><span class="p">(</span><span class="n">final_totals</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">targets</span><span class="p">)</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">targets</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mi">100</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Target totals: [ 245346.0788293  1237963.09787856]
+Final calibrated totals: [ 245345.07199363 1237962.15341544]
+Difference: [-1.00683567 -0.94446312]
+Relative error: [-4.10373653e-04 -7.62917025e-05]
+</pre></div>
+</div>
+</div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">np</span><span class="o">.</span><span class="n">testing</span><span class="o">.</span><span class="n">assert_allclose</span><span class="p">(</span>
+        <span class="n">final_totals</span><span class="p">,</span>
+        <span class="n">targets</span><span class="p">,</span>
+        <span class="n">rtol</span><span class="o">=</span><span class="mf">0.01</span><span class="p">,</span>  <span class="c1"># relative tolerance</span>
+        <span class="n">err_msg</span><span class="o">=</span><span class="s2">&quot;Calibrated totals do not match target values&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</section>
+
+    <script type="text/x-thebe-config">
+    {
+        requestKernel: true,
+        binderOptions: {
+            repo: "binder-examples/jupyter-stacks-datascience",
+            ref: "master",
+        },
+        codeMirrorConfig: {
+            theme: "abcdef",
+            mode: "python"
+        },
+        kernelOptions: {
+            name: "python3",
+            path: "./."
+        },
+        predefinedOutput: true
+    }
+    </script>
+    <script>kernelName = 'python3'</script>
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          
+          <a class="prev-page" href="intro.html">
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+              <div class="page-info">
+                <div class="context">
+                  <span>Previous</span>
+                </div>
+                
+                <div class="title">Home</div>
+                
+              </div>
+            </a>
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; 2022
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer">
+      
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">Basic usage</a><ul>
+<li><a class="reference internal" href="#parameters">Parameters</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#example">Example</a></li>
+</ul>
+
+          </div>
+        </div>
+      </div>
+      
+      
+    </aside>
+  </div>
+</div><script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
+    <script src="_static/doctools.js"></script>
+    <script src="_static/clipboard.min.js"></script>
+    <script src="_static/copybutton.js"></script>
+    <script src="_static/scripts/sphinx-book-theme.js?digest=5a5c038af52cf7bc1a1ec88eea08e6366ee68824"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="_static/togglebutton.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script src="_static/design-tabs.js"></script>
+    <script src="_static/scripts/furo.js"></script>
+    <script>const THEBE_JS_URL = "https://unpkg.com/thebe@0.8.2/lib/index.js"
+const thebe_selector = ".thebe,.cell"
+const thebe_selector_input = "pre"
+const thebe_selector_output = ".output, .cell_output"
+</script>
+    <script async="async" src="_static/sphinx-thebe.js"></script>
+    </body>
+</html>
