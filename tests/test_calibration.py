@@ -129,34 +129,36 @@ def test_calibration_responds_to_contradiction() -> None:
     """Test that calibration performance degrades predicably with increased contradiction"""
 
     results = []
-    for contradiction_factor in [.1, .2]:
+    for contradiction_factor in [0.1, 0.2]:
 
         sample_df, totals = simulate_contradictory_data(
-            T = 6000,
-            k = 3,
-            c = contradiction_factor,
-            n = 30
+            T=6000, k=3, c=contradiction_factor, n=30
         )
 
         metrics_matrix = pd.DataFrame(
             {
                 "y_all": sample_df["y_ij"],
                 "y_stratum_1": (
-                    (sample_df["stratum_id"] == 1).astype(float) * sample_df["y_ij"]
+                    (sample_df["stratum_id"] == 1).astype(float)
+                    * sample_df["y_ij"]
                 ),
                 "y_stratum_2": (
-                    (sample_df["stratum_id"] == 2).astype(float) * sample_df["y_ij"]
+                    (sample_df["stratum_id"] == 2).astype(float)
+                    * sample_df["y_ij"]
                 ),
                 "y_stratum_3": (
-                    (sample_df["stratum_id"] == 3).astype(float) * sample_df["y_ij"]
+                    (sample_df["stratum_id"] == 3).astype(float)
+                    * sample_df["y_ij"]
                 ),
             }
         )
 
         calibrator = Calibration(
             loss_matrix=metrics_matrix,
-            weights=sample_df['w_ij'],
-            targets=np.hstack([totals['T_official'], totals['S_star_official']])
+            weights=sample_df["w_ij"],
+            targets=np.hstack(
+                [totals["T_official"], totals["S_star_official"]]
+            ),
         )
 
         calibrator.calibrate()
@@ -164,21 +166,25 @@ def test_calibration_responds_to_contradiction() -> None:
         new_weights = calibrator.weights
         new_estimates = np.matmul(metrics_matrix.T, new_weights)
 
-        overall_loss = (totals['T_official'] - new_estimates["y_all"]) ** 2
+        overall_loss = (totals["T_official"] - new_estimates["y_all"]) ** 2
         strata_loss = (
-            (totals['S_star_official'][0] - new_estimates["y_stratum_1"]) ** 2
-            + (totals['S_star_official'][1] - new_estimates["y_stratum_2"]) ** 2
-            + (totals['S_star_official'][2] - new_estimates["y_stratum_3"]) ** 2
+            (totals["S_star_official"][0] - new_estimates["y_stratum_1"]) ** 2
+            + (totals["S_star_official"][1] - new_estimates["y_stratum_2"])
+            ** 2
+            + (totals["S_star_official"][2] - new_estimates["y_stratum_3"])
+            ** 2
         )
 
         results.append([contradiction_factor, overall_loss, strata_loss])
 
     results_df = pd.DataFrame(
         results,
-        columns=["contradiction_factor", "overall_loss", "strata_loss"]
+        columns=["contradiction_factor", "overall_loss", "strata_loss"],
     )
 
-    assert results_df["overall_loss"].is_monotonic_increasing, "Overall loss is not increasing"
-    assert results_df["strata_loss"].is_monotonic_increasing, "Strata loss is not increasing"
-
-
+    assert results_df[
+        "overall_loss"
+    ].is_monotonic_increasing, "Overall loss is not increasing"
+    assert results_df[
+        "strata_loss"
+    ].is_monotonic_increasing, "Strata loss is not increasing"
