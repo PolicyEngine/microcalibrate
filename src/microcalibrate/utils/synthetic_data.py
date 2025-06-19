@@ -52,9 +52,7 @@ def simulate_contradictory_data(
     # Simulate population microdata, draw sample, and calculate weights
     all_samples = []
     for i in range(k):
-        sample_y = rng.gamma(
-            shape=gamma_shape, scale=gamma_scale, size=n_i[i]
-        )
+        sample_y = rng.gamma(shape=gamma_shape, scale=gamma_scale, size=n_i[i])
         weight = np.full(n_i[i], S_i_star[i] / np.sum(sample_y))  # baseline
         stratum_sample = pd.DataFrame(
             {"stratum_id": i + 1, "y_ij": sample_y, "w_ij": weight}
