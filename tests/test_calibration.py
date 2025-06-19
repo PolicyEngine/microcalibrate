@@ -132,7 +132,7 @@ def test_calibration_responds_to_contradiction() -> None:
     for contradiction_factor in [0.1, 0.2]:
 
         sample_df, totals = simulate_contradictory_data(
-            T=6000, k=3, c=contradiction_factor, n=30
+            T=6000, k=3, c=contradiction_factor, n=30, seed=42
         )
 
         metrics_matrix = pd.DataFrame(

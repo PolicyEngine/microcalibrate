@@ -10,11 +10,14 @@ def simulate_contradictory_data(
     dirichlet_alpha=5.0,  # low value creates uneven divisions
     gamma_shape: float = 2.0,
     gamma_scale: float = 2.0,
+    seed: int = None,
 ):
     """Returns tuple containing the sample DataFrame and the official totals dict."""
+    rng = np.random.default_rng(seed)
+
     # Simulate stratum proportions (thetas)
     alphas = np.full(k, dirichlet_alpha)
-    thetas = np.random.dirichlet(alphas)
+    thetas = rng.dirichlet(alphas)
 
     # Define Stratum subtotals S_i
     S_i = thetas * T
@@ -22,7 +25,7 @@ def simulate_contradictory_data(
     # Calculate and distribute the contradiction 'delta'
     delta = np.floor(c * T)
     p = np.full(k, 1 / k)
-    delta_i = np.random.multinomial(n=int(delta), pvals=p)
+    delta_i = rng.multinomial(n=int(delta), pvals=p)
 
     # Calculate final, contradictory official subtotals S_i^*
     S_i_star = S_i - delta_i
@@ -49,7 +52,7 @@ def simulate_contradictory_data(
     # Simulate population microdata, draw sample, and calculate weights
     all_samples = []
     for i in range(k):
-        sample_y = np.random.gamma(
+        sample_y = rng.gamma(
             shape=gamma_shape, scale=gamma_scale, size=n_i[i]
         )
         weight = np.full(n_i[i], S_i_star[i] / np.sum(sample_y))  # baseline
