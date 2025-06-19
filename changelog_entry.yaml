@@ -1,0 +1,6 @@
+- bump: minor
+  changes:
+    added:
+      - synthetic data simulation function with variable contradition level
+    changed:
+      - Changed the standard deviation on the income simulation so values wouldn't go negative
