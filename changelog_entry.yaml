@@ -1,0 +1,4 @@
+- bump: minor
+  changes:
+    added:
+    - Test for warning logic in Calibration() input checks.
