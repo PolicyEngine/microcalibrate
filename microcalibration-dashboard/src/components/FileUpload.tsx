@@ -344,7 +344,7 @@ export default function FileUpload({ onFileLoad, onViewDashboard }: FileUploadPr
     setError('');
 
     try {
-      const response = await fetch('/sample.csv');
+      const response = await fetch('/calibration_log.csv');
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -353,11 +353,11 @@ export default function FileUpload({ onFileLoad, onViewDashboard }: FileUploadPr
       // Sample epochs to limit data size
       const samplingResult = sampleEpochs(content);
       
-      onFileLoad(samplingResult.content, 'sample.csv');
+      onFileLoad(samplingResult.content, 'calibration_log.csv');
       if (samplingResult.wasSampled) {
-        setLoadedFile(`sample.csv (sampled ${samplingResult.sampledEpochs}/${samplingResult.originalEpochs} epochs)`);
+        setLoadedFile(`calibration_log.csv (sampled ${samplingResult.sampledEpochs}/${samplingResult.originalEpochs} epochs)`);
       } else {
-        setLoadedFile('sample.csv');
+        setLoadedFile('calibration_log.csv');
       }
     } catch (err) {
       setError(`Failed to load sample data: ${err instanceof Error ? err.message : 'Unknown error'}`);
