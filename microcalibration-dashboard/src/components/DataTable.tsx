@@ -92,13 +92,22 @@ export default function DataTable({ data }: DataTableProps) {
     </button>
   );
 
-  const formatValue = (value: number) => {
-    if (Math.abs(value) >= 1000000) {
-      return (value / 1000000).toFixed(2) + 'M';
-    } else if (Math.abs(value) >= 1000) {
-      return (value / 1000).toFixed(1) + 'K';
+  const formatValue = (value: number | undefined | null) => {
+    if (value === undefined || value === null || isNaN(value)) {
+      return 'N/A';
     }
-    return value.toFixed(2);
+    
+    const numValue = Number(value);
+    if (isNaN(numValue)) {
+      return 'N/A';
+    }
+    
+    if (Math.abs(numValue) >= 1000000) {
+      return (numValue / 1000000).toFixed(2) + 'M';
+    } else if (Math.abs(numValue) >= 1000) {
+      return (numValue / 1000).toFixed(1) + 'K';
+    }
+    return numValue.toFixed(2);
   };
 
   return (
@@ -160,8 +169,11 @@ export default function DataTable({ data }: DataTableProps) {
           </thead>
           <tbody>
             {paginatedData.map((row, i) => {
-              const errorClass = row.rel_abs_error < 0.05 ? 'text-green-600' : 
-                                row.rel_abs_error < 0.20 ? 'text-yellow-600' : 'text-red-600';
+              const relError = row.rel_abs_error;
+              const errorClass = (relError !== undefined && relError !== null && !isNaN(relError))
+                ? (relError < 0.05 ? 'text-green-600' : 
+                   relError < 0.20 ? 'text-yellow-600' : 'text-red-600')
+                : 'text-gray-600';
               return (
                 <tr key={i} className="border-b border-gray-200 hover:bg-gray-50">
                   <td className="py-3 px-4 text-gray-900 max-w-64" title={row.target_name}>
@@ -182,13 +194,15 @@ export default function DataTable({ data }: DataTableProps) {
                     {formatValue(row.estimate)}
                   </td>
                   <td className="py-3 px-4 text-right text-gray-700 font-mono text-sm">
-                    {row.error >= 0 ? '+' : ''}{formatValue(row.error)}
+                    {(row.error !== undefined && row.error !== null && row.error >= 0) ? '+' : ''}{formatValue(row.error)}
                   </td>
                   <td className="py-3 px-4 text-right text-gray-700 font-mono text-sm">
                     {formatValue(row.abs_error)}
                   </td>
                   <td className={`py-3 px-4 text-right font-mono text-sm font-semibold ${errorClass}`}>
-                    {(row.rel_abs_error * 100).toFixed(2)}%
+                    {(relError !== undefined && relError !== null && !isNaN(relError))
+                      ? `${(relError * 100).toFixed(2)}%`
+                      : 'N/A'}
                   </td>
                 </tr>
               );
