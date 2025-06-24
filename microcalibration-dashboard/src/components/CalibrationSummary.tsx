@@ -95,7 +95,7 @@ export default function CalibrationSummary({ data }: CalibrationSummaryProps) {
 
   return (
     <div className="bg-white border border-gray-300 p-6 rounded-lg shadow-sm">
-      <h2 className="text-xl font-bold text-gray-800 mb-4">Calibration Summary</h2>
+      <h2 className="text-xl font-bold text-gray-800 mb-4">Calibration progress summary</h2>
       <p className="text-gray-600 mb-6">
         Analysis of how calibration affected each target&apos;s accuracy from initial to final epoch
       </p>
@@ -106,7 +106,7 @@ export default function CalibrationSummary({ data }: CalibrationSummaryProps) {
         <div className="bg-green-50 border border-green-200 rounded-lg p-4">
           <div className="flex items-center mb-2">
             <TrendingUp className="w-5 h-5 text-green-600 mr-2" />
-            <h3 className="text-lg font-semibold text-green-800">Significantly Improved</h3>
+            <h3 className="text-lg font-semibold text-green-800">Significantly improved</h3>
           </div>
           <div className="text-2xl font-bold text-green-700">{improvedSignificantly}</div>
           <div className="text-sm text-green-600">
@@ -136,7 +136,7 @@ export default function CalibrationSummary({ data }: CalibrationSummaryProps) {
         <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
           <div className="flex items-center mb-2">
             <Minus className="w-5 h-5 text-gray-600 mr-2" />
-            <h3 className="text-lg font-semibold text-gray-800">Minimal Change</h3>
+            <h3 className="text-lg font-semibold text-gray-800">Minimal change</h3>
           </div>
           <div className="text-2xl font-bold text-gray-700">{minimalChange}</div>
           <div className="text-sm text-gray-600">
@@ -150,12 +150,12 @@ export default function CalibrationSummary({ data }: CalibrationSummaryProps) {
 
       {/* Detailed Examples */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Top Improvements */}
+        {/* Top improvements */}
         {improvedExamples.length > 0 && (
           <div>
             <h4 className="text-md font-semibold text-green-800 mb-3 flex items-center">
               <TrendingUp className="w-4 h-4 mr-1" />
-              Top Improvements
+              Top improvements
             </h4>
             <div className="space-y-2">
               {improvedExamples.map((target, i) => (
@@ -175,12 +175,12 @@ export default function CalibrationSummary({ data }: CalibrationSummaryProps) {
           </div>
         )}
 
-        {/* Worsened Cases */}
+        {/* Worsened cases */}
         {worsenedExamples.length > 0 && (
           <div>
             <h4 className="text-md font-semibold text-red-800 mb-3 flex items-center">
               <TrendingDown className="w-4 h-4 mr-1" />
-              Worsened Cases
+              Worsened cases
             </h4>
             <div className="space-y-2">
               {worsenedExamples.map((target, i) => (
@@ -200,12 +200,12 @@ export default function CalibrationSummary({ data }: CalibrationSummaryProps) {
           </div>
         )}
 
-        {/* Stable Cases */}
+        {/* Stable cases */}
         {minimalExamples.length > 0 && (
           <div>
             <h4 className="text-md font-semibold text-gray-800 mb-3 flex items-center">
               <Minus className="w-4 h-4 mr-1" />
-              Stable Cases
+              Stable cases
             </h4>
             <div className="space-y-2">
               {minimalExamples.map((target, i) => (

@@ -68,7 +68,7 @@ export default function MetricsOverview({ data }: MetricsOverviewProps) {
     <div className="space-y-6">
       {/* Main quality summary */}
       <div className="bg-white border border-gray-300 p-6 rounded-lg shadow-sm">
-        <h2 className="text-2xl font-bold mb-2 text-gray-800">Calibration quality summary</h2>
+        <h2 className="text-2xl font-bold mb-2 text-gray-800">Calibration quality</h2>
         <p className="text-gray-600 mb-6">
           Assessment of how well calibrated weights match target statistics (final epoch: {maxEpoch})
         </p>

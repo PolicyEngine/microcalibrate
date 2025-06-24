@@ -15,6 +15,11 @@ export default function Dashboard() {
   const [filename, setFilename] = useState<string>('');
   const [error, setError] = useState<string>('');
   const [showDashboard, setShowDashboard] = useState<boolean>(false);
+  
+  // Comparison mode state
+  const [comparisonMode, setComparisonMode] = useState<boolean>(false);
+  const [secondData, setSecondData] = useState<CalibrationDataPoint[]>([]);
+  const [secondFilename, setSecondFilename] = useState<string>('');
 
   const handleFileLoad = (content: string, name: string) => {
     try {
@@ -23,12 +28,38 @@ export default function Dashboard() {
       setData(parsedData);
       setFilename(name);
       setError('');
+      setComparisonMode(false);
       // Do not automatically show dashboard - let user click the button
     } catch (err) {
       console.error('Error parsing CSV:', err);
       setError(err instanceof Error ? err.message : 'Failed to parse CSV file');
       setData([]);
       setFilename('');
+      setShowDashboard(false);
+    }
+  };
+
+  const handleComparisonLoad = (content1: string, filename1: string, content2: string, filename2: string) => {
+    try {
+      const parsedData1 = parseCalibrationCSV(content1);
+      const parsedData2 = parseCalibrationCSV(content2);
+      console.log('Parsed comparison data lengths:', parsedData1.length, parsedData2.length);
+      
+      setData(parsedData1);
+      setFilename(filename1);
+      setSecondData(parsedData2);
+      setSecondFilename(filename2);
+      setComparisonMode(true);
+      setError('');
+      setShowDashboard(true); // Automatically show comparison dashboard
+    } catch (err) {
+      console.error('Error parsing comparison CSV:', err);
+      setError(err instanceof Error ? err.message : 'Failed to parse comparison CSV files');
+      setData([]);
+      setSecondData([]);
+      setFilename('');
+      setSecondFilename('');
+      setComparisonMode(false);
       setShowDashboard(false);
     }
   };
@@ -48,7 +79,10 @@ export default function Dashboard() {
           </p>
           {filename && (
             <p className="mt-1 text-sm text-blue-600">
-              Loaded: {filename}
+              {comparisonMode 
+                ? `Comparing: ${filename} vs ${secondFilename}`
+                : `Loaded: ${filename}`
+              }
             </p>
           )}
         </div>
@@ -74,6 +108,7 @@ export default function Dashboard() {
           <div className="mb-8">
             <FileUpload 
               onFileLoad={handleFileLoad}
+              onCompareLoad={handleComparisonLoad}
               onViewDashboard={() => {
                 console.log('View Dashboard clicked, data length:', data.length);
                 setShowDashboard(true);
@@ -90,32 +125,66 @@ export default function Dashboard() {
               <button
                 onClick={() => {
                   setData([]);
+                  setSecondData([]);
                   setFilename('');
+                  setSecondFilename('');
+                  setComparisonMode(false);
                   setError('');
                   setShowDashboard(false);
                 }}
                 className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium"
               >
-                Load new file
+                {comparisonMode ? 'Load new comparison' : 'Load new file'}
               </button>
             </div>
 
             {data.length > 0 ? (
               <>
-                {/* Metrics Overview */}
-                <MetricsOverview data={data} />
+                {comparisonMode ? (
+                  // Comparison Mode Dashboard
+                  <>
+                    <div className="bg-white border border-gray-300 p-6 rounded-lg shadow-sm">
+                      <h2 className="text-xl font-bold text-gray-800 mb-4">📊 Calibration Comparison</h2>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                          <h3 className="text-lg font-semibold text-blue-600 mb-2">First Run</h3>
+                          <p className="text-sm text-gray-600">{filename}</p>
+                          <p className="text-sm text-gray-500">{data.length} data points</p>
+                        </div>
+                        <div>
+                          <h3 className="text-lg font-semibold text-green-600 mb-2">Second Run</h3>
+                          <p className="text-sm text-gray-600">{secondFilename}</p>
+                          <p className="text-sm text-gray-500">{secondData.length} data points</p>
+                        </div>
+                      </div>
+                      <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded">
+                        <p className="text-yellow-800 text-sm">
+                          🚧 <strong>Comparison dashboard coming soon!</strong> This will show side-by-side analysis of 
+                          calibration performance, target improvements/regressions, and statistical comparisons between runs.
+                        </p>
+                      </div>
+                    </div>
 
-                {/* Error Distribution */}
-                <ErrorDistribution data={data} />
-
-                {/* Calibration Summary */}
-                <CalibrationSummary data={data} />
-
-                {/* Loss Chart */}
-                <LossChart data={data} />
-
-                {/* Detailed Results Table */}
-                <DataTable data={data} />
+                    {/* For now, show first dataset in regular dashboard */}
+                    <div className="opacity-75">
+                      <h3 className="text-lg font-semibold text-gray-600 mb-4">Preview: First Dataset ({filename})</h3>
+                      <MetricsOverview data={data} />
+                      <ErrorDistribution data={data} />
+                      <CalibrationSummary data={data} />
+                      <LossChart data={data} />
+                      <DataTable data={data} />
+                    </div>
+                  </>
+                ) : (
+                  // Regular Single Dataset Dashboard
+                  <>
+                    <MetricsOverview data={data} />
+                    <ErrorDistribution data={data} />
+                    <CalibrationSummary data={data} />
+                    <LossChart data={data} />
+                    <DataTable data={data} />
+                  </>
+                )}
               </>
             ) : (
               <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4">
