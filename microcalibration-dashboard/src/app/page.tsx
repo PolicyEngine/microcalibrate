@@ -5,6 +5,7 @@ import FileUpload from '@/components/FileUpload';
 import MetricsOverview from '@/components/MetricsOverview';
 import LossChart from '@/components/LossChart';
 import ErrorDistribution from '@/components/ErrorDistribution';
+import CalibrationSummary from '@/components/CalibrationSummary';
 import DataTable from '@/components/DataTable';
 import { CalibrationDataPoint } from '@/types/calibration';
 import { parseCalibrationCSV } from '@/utils/csvParser';
@@ -106,6 +107,9 @@ export default function Dashboard() {
 
                 {/* Error Distribution */}
                 <ErrorDistribution data={data} />
+
+                {/* Calibration Summary */}
+                <CalibrationSummary data={data} />
 
                 {/* Loss Chart */}
                 <LossChart data={data} />

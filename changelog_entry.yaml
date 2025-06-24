@@ -1,0 +1,4 @@
+- bump: minor
+  changes:
+    added:
+    - Adding calibration summary section to dashboard.
