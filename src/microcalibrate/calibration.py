@@ -1,5 +1,7 @@
 import logging
-from typing import Optional
+from typing import Optional, Callable
+import torch
+from torch import Tensor
 
 import numpy as np
 import pandas as pd
@@ -10,9 +12,11 @@ logger = logging.getLogger(__name__)
 class Calibration:
     def __init__(
         self,
-        loss_matrix: pd.DataFrame,
         weights: np.ndarray,
         targets: np.ndarray,
+        target_names: Optional[np.ndarray] = None,
+        loss_matrix: Optional[pd.DataFrame] = None,
+        estimate_function: Optional[Callable[[Tensor], Tensor]] = None,
         epochs: Optional[int] = 32,
         noise_level: Optional[float] = 10.0,
         learning_rate: Optional[float] = 1e-3,
@@ -34,7 +38,14 @@ class Calibration:
             csv_path (str): Optional path to save performance logs as CSV. Defaults to None.
         """
 
-        self.loss_matrix = loss_matrix
+        self.estimate_function = estimate_function
+        self.target_names = target_names
+
+        if self.estimate_function is None:
+            self.estimate_function = lambda weights: weights @ loss_matrix
+        if loss_matrix is not None:
+            self.loss_matrix = loss_matrix
+            self.target_names = loss_matrix.columns.to_numpy()
         self.weights = weights
         self.targets = targets
         self.epochs = epochs
@@ -47,48 +58,48 @@ class Calibration:
 
     def calibrate(self) -> None:
         """Calibrate the weights based on the loss matrix and targets."""
-        target_names = np.array(self.loss_matrix.columns)
 
         self._assess_targets(
-            loss_matrix=self.loss_matrix,
+            estimate_function=self.estimate_function,
             weights=self.weights,
             targets=self.targets,
-            target_names=target_names,
+            target_names=self.target_names,
         )
 
         from .reweight import reweight
 
-        new_weights, subsample, self.performance_df = reweight(
+        new_weights, self.performance_df = reweight(
             original_weights=self.weights,
-            loss_matrix=self.loss_matrix,
+            estimate_function=self.estimate_function,
             targets_array=self.targets,
+            target_names=self.target_names,
             epochs=self.epochs,
             noise_level=self.noise_level,
             learning_rate=self.learning_rate,
             dropout_rate=self.dropout_rate,
-            subsample_every=self.subsample_every,
             csv_path=self.csv_path,
         )
 
-        self.loss_matrix = self.loss_matrix.loc[subsample]
         self.weights = new_weights
 
         return self.performance_df
 
     def _assess_targets(
         self,
-        loss_matrix: pd.DataFrame,
+        estimate_function: Callable[[Tensor], Tensor],
         weights: np.ndarray,
         targets: np.ndarray,
         target_names: Optional[np.ndarray] = None,
+        loss_matrix: Optional[pd.DataFrame] = None,
     ) -> None:
         """Assess the targets to ensure they do not violate basic requirements like compatibility, correct order of magnitude, etc.
 
         Args:
-            loss_matrix (pd.DataFrame): DataFrame containing the loss matrix.
+            estimate_function (Callable[[Tensor], Tensor]): Function to estimate the targets from weights.
             weights (np.ndarray): Array of original weights.
             targets (np.ndarray): Array of target values.
             target_names (np.ndarray): Optional names of the targets for logging. Defaults to None.
+            loss_matrix (pd.DataFrame): Optional DataFrame containing the loss matrix. Defaults to None.
 
         Raises:
             ValueError: If the targets do not match the expected format or values.
@@ -98,10 +109,7 @@ class Calibration:
 
         if targets.ndim != 1:
             raise ValueError("Targets must be a 1D NumPy array.")
-        if len(targets) != loss_matrix.shape[1]:
-            raise ValueError(
-                f"Mismatch: {len(targets)} targets given, but loss_matrix has {loss_matrix.shape[1]} columns."
-            )
+        
         if np.any(np.isnan(targets)):
             raise ValueError("Targets contain NaN values.")
 
@@ -111,9 +119,10 @@ class Calibration:
             )
 
         # Estimate order of magnitude from column sums and warn if they are off by an order of magnitude from targets
-        estimates = (
-            np.ones((1, loss_matrix.shape[0])) @ loss_matrix.values
-        ).flatten()
+        one_weights = np.ones((1, weights.shape[0]))
+        estimates = estimate_function(
+            Tensor(one_weights, dtype=torch.float32)
+        ).cpu().numpy().flatten()
         # Use a small epsilon to avoid division by zero
         eps = 1e-4
         adjusted_estimates = np.where(estimates == 0, eps, estimates)
@@ -133,14 +142,14 @@ class Calibration:
                     f"Target {target_names[i]} ({target_val:.2e}) differs from initial estimate ({estimate_val:.2e}) "
                     f"by {order_diff:.2f} orders of magnitude."
                 )
-
-            contributing_mask = loss_matrix.iloc[:, i] != 0
-            contribution_ratio = contributing_mask.sum() / loss_matrix.shape[0]
-            if contribution_ratio < 0.01:
-                logger.warning(
-                    f"Target {target_names[i]} is supported by only {contribution_ratio:.2%} "
-                    f"of records in the loss matrix. This may make calibration unstable or ineffective."
-                )
+            if loss_matrix is not None:
+                contributing_mask = loss_matrix.iloc[:, i] != 0
+                contribution_ratio = contributing_mask.sum() / loss_matrix.shape[0]
+                if contribution_ratio < 0.01:
+                    logger.warning(
+                        f"Target {target_names[i]} is supported by only {contribution_ratio:.2%} "
+                        f"of records in the loss matrix. This may make calibration unstable or ineffective."
+                    )
 
     def summary(
         self,

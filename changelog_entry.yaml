@@ -1,0 +1,4 @@
+- bump: minor
+  changes:
+    added:
+    - Estimate function, over loss matrix.

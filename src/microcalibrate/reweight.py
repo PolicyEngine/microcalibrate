@@ -1,11 +1,12 @@
 import logging
 import os
-from typing import Optional
+from typing import Optional, Callable
 
 import numpy as np
 import pandas as pd
 import torch
 from tqdm import tqdm
+from torch import Tensor
 
 from .utils.log_performance import log_performance_over_epochs
 from .utils.metrics import loss, pct_close
@@ -22,12 +23,12 @@ device = torch.device(
 
 def reweight(
     original_weights: np.ndarray,
-    loss_matrix: pd.DataFrame,
+    estimate_function: Optional[Callable[[Tensor], Tensor]],
     targets_array: np.ndarray,
+    target_names: np.ndarray,
     dropout_rate: Optional[float] = 0.1,
     epochs: Optional[int] = 2_000,
     noise_level: Optional[float] = 10.0,
-    subsample_every: Optional[int] = 50,
     learning_rate: Optional[float] = 1e-3,
     csv_path: Optional[str] = None,
 ) -> tuple[np.ndarray, np.ndarray]:
@@ -35,23 +36,20 @@ def reweight(
 
     Args:
         original_weights (np.ndarray): Original weights to be reweighted.
-        loss_matrix (pd.DataFrame): DataFrame containing the loss matrix.
+        estimate_function (Optional[Callable[[Tensor], Tensor]]): Function to estimate targets from weights.
         targets_array (np.ndarray): Array of target values.
+        target_names (np.ndarray): Names of the targets.
         dropout_rate (float): Optional probability of dropping weights during training.
         epochs (int): Optional number of epochs for training.
         noise_level (float): Optional level of noise to add to the original weights.
-        subsample_every (int): Optional frequency of subsampling during training.
         learning_rate (float): Optional learning rate for the optimizer.
 
     Returns:
         np.ndarray: Reweighted weights.
-        original_indices (np.ndarray): Indices of the original weights that were kept after subsampling.
         performance_df (pd.DataFrame): DataFrame containing the performance metrics over epochs.
     """
     if csv_path is not None and not csv_path.endswith(".csv"):
         raise ValueError("csv_path must be a string ending with .csv")
-
-    target_names = np.array(loss_matrix.columns)
 
     logger.info(
         f"Starting calibration process for targets {target_names}: {targets_array}"
@@ -60,11 +58,7 @@ def reweight(
         f"Original weights - mean: {original_weights.mean():.4f}, "
         f"std: {original_weights.std():.4f}"
     )
-
-    loss_matrix = torch.tensor(
-        loss_matrix.values, dtype=torch.float32, device=device
-    )
-    original_indices = np.arange(loss_matrix.shape[0])
+    
 
     targets = torch.tensor(targets_array, dtype=torch.float32, device=device)
     random_noise = np.random.random(original_weights.shape) * noise_level
@@ -114,7 +108,7 @@ def reweight(
         running_loss = None
         for j in range(2):
             weights_ = dropout_weights(weights, dropout_rate)
-            estimate = torch.exp(weights_) @ loss_matrix
+            estimate = estimate_function(torch.exp(weights_))
             l = loss(estimate, targets)
             close = pct_close(estimate, targets)
             if running_loss is None:
@@ -133,7 +127,6 @@ def reweight(
             iterator.set_postfix(
                 {
                     "loss": l.item(),
-                    "count_observations": loss_matrix.shape[0],
                     "weights_mean": torch.exp(weights).mean().item(),
                     "weights_std": torch.exp(weights).std().item(),
                     "weights_min": torch.exp(weights).min().item(),
@@ -152,33 +145,6 @@ def reweight(
 
         l.backward()
         optimizer.step()
-
-        if subsample_every > 0 and i % subsample_every == 0 and i > 0:
-            weight_values = np.exp(weights.detach().cpu().numpy())
-
-            k = 100
-            # indices = indices of weights with values < 1
-            indices = np.where(weight_values >= k)[0]
-            loss_matrix = loss_matrix[indices, :]
-            weights = weights[indices]
-
-            logger.info(
-                f"Epoch {i}: Subsampling - kept {len(indices)} observations, "
-                f"removed {original_indices - len(indices)} (weights < {k})"
-            )
-
-            loss_matrix = torch.tensor(
-                loss_matrix.detach().cpu(), dtype=torch.float32, device=device
-            )
-            weights = torch.tensor(
-                weights.detach().cpu(),
-                dtype=torch.float32,
-                device=device,
-                requires_grad=True,
-            )
-
-            original_indices = original_indices[indices]
-            optimizer = torch.optim.Adam([weights], lr=learning_rate)
 
     tracker_dict = {
         "epochs": epochs,
@@ -201,6 +167,5 @@ def reweight(
 
     return (
         final_weights,
-        original_indices,
         performance_df,
     )
