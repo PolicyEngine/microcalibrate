@@ -28,9 +28,11 @@ class Calibration:
         """Initialize the Calibration class.
 
         Args:
-            estimate_matrix (pd.DataFrame): DataFrame containing the estimate matrix.
             weights (np.ndarray): Array of original weights.
             targets (np.ndarray): Array of target values.
+            target_names (Optional[np.ndarray]): Optional names of the targets for logging. Defaults to None. You MUST pass these names if you are not passing in an estimate matrix, and just passing in an estimate function.
+            estimate_matrix (pd.DataFrame): DataFrame containing the estimate matrix.
+            estimate_function (Optional[Callable[[Tensor], Tensor]]): Function to estimate targets from weights. Defaults to None, in which case it will use the estimate_matrix.
             epochs (int): Optional number of epochs for calibration. Defaults to 32.
             noise_level (float): Optional level of noise to add to weights. Defaults to 10.0.
             learning_rate (float): Optional learning rate for the optimizer. Defaults to 1e-3.
