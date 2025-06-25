@@ -7,6 +7,7 @@ import JSZip from 'jszip';
 interface FileUploadProps {
   onFileLoad: (content: string, filename: string) => void;
   onViewDashboard: () => void;
+  onCompareLoad?: (content1: string, filename1: string, content2: string, filename2: string) => void;
 }
 
 interface GitHubCommit {
@@ -34,7 +35,7 @@ interface GitHubArtifact {
   created_at: string;
 }
 
-export default function FileUpload({ onFileLoad, onViewDashboard }: FileUploadProps) {
+export default function FileUpload({ onFileLoad, onViewDashboard, onCompareLoad }: FileUploadProps) {
   const [isDragOver, setIsDragOver] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [urlInput, setUrlInput] = useState('');
@@ -51,6 +52,14 @@ export default function FileUpload({ onFileLoad, onViewDashboard }: FileUploadPr
   const [availableArtifacts, setAvailableArtifacts] = useState<GitHubArtifact[]>([]);
   const [selectedArtifact, setSelectedArtifact] = useState('');
   const [isLoadingGithubData, setIsLoadingGithubData] = useState(false);
+
+  // Comparison mode state
+  const [comparisonMode, setComparisonMode] = useState(false);
+  const [selectedSecondBranch, setSelectedSecondBranch] = useState('');
+  const [secondCommits, setSecondCommits] = useState<GitHubCommit[]>([]);
+  const [selectedSecondCommit, setSelectedSecondCommit] = useState('');
+  const [secondArtifacts, setSecondArtifacts] = useState<GitHubArtifact[]>([]);
+  const [selectedSecondArtifact, setSelectedSecondArtifact] = useState('');
 
   function sampleEpochs(csvContent: string, maxEpochs = 20): { content: string; wasSampled: boolean; originalEpochs: number; sampledEpochs: number } {
     const lines = csvContent.trim().split('\n');
@@ -465,7 +474,13 @@ export default function FileUpload({ onFileLoad, onViewDashboard }: FileUploadPr
       );
 
       if (!runsResponse.ok) {
-        throw new Error(`Failed to fetch workflow runs: ${runsResponse.status}`);
+        if (runsResponse.status === 403) {
+          throw new Error(`GitHub API rate limit exceeded or token permissions insufficient (403). Please try again later or check your token permissions.`);
+        } else if (runsResponse.status === 404) {
+          throw new Error(`Repository or commit not found (404). Please check the repository name and commit SHA.`);
+        } else {
+          throw new Error(`Failed to fetch workflow runs: ${runsResponse.status} ${runsResponse.statusText}`);
+        }
       }
 
       const runsData = await runsResponse.json();
@@ -615,8 +630,10 @@ export default function FileUpload({ onFileLoad, onViewDashboard }: FileUploadPr
       // Sample epochs to limit data size
       const samplingResult = sampleEpochs(csvContent);
 
-      // Success! Load the CSV into the dashboard
-      const baseDisplayName = `${csvFilename} (from ${artifact.name})`;
+      // Success! Load the CSV into the dashboard with commit info
+      const commitShort = selectedCommit.slice(0, 8);
+      const branchInfo = selectedBranch ? ` (${selectedBranch})` : '';
+      const baseDisplayName = `${csvFilename} @ ${commitShort}${branchInfo}`;
       const displayName = samplingResult.wasSampled 
         ? `${baseDisplayName} - sampled ${samplingResult.sampledEpochs}/${samplingResult.originalEpochs} epochs`
         : baseDisplayName;
@@ -637,6 +654,247 @@ export default function FileUpload({ onFileLoad, onViewDashboard }: FileUploadPr
     } catch (extractError) {
       console.error('CSV extraction error:', extractError);
       setError(`❌ Failed to extract CSV: ${extractError instanceof Error ? extractError.message : 'Unknown error'}. Try using the URL tab with a direct CSV link.`);
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  async function fetchSecondBranchCommits(branch: string) {
+    if (!githubRepo.trim() || !branch) return;
+
+    setIsLoadingGithubData(true);
+    try {
+      const response = await fetch(`https://api.github.com/repos/${githubRepo}/commits?sha=${branch}&per_page=20`);
+      if (!response.ok) {
+        if (response.status === 404) {
+          throw new Error('Branch not found or repository is private.');
+        }
+        throw new Error(`Failed to fetch commits: ${response.status} ${response.statusText}`);
+      }
+
+      const commits: GitHubCommit[] = await response.json();
+      setSecondCommits(commits);
+      
+      // Auto-select latest commit and fetch its artifacts
+      if (commits.length > 0) {
+        setSelectedSecondCommit(commits[0].sha);
+        await fetchSecondArtifacts(commits[0].sha);
+      }
+    } catch (err) {
+      setError(`GitHub API error: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    } finally {
+      setIsLoadingGithubData(false);
+    }
+  }
+
+  async function fetchSecondArtifacts(commitSha: string) {
+    if (!githubRepo.trim() || !commitSha) return;
+
+    const githubToken = process.env.NEXT_PUBLIC_GITHUB_TOKEN;
+    if (!githubToken) {
+      setError('GitHub token not configured. Please set NEXT_PUBLIC_GITHUB_TOKEN environment variable.');
+      return;
+    }
+
+    setIsLoadingGithubData(true);
+    setSecondArtifacts([]);
+    setSelectedSecondArtifact('');
+
+    try {
+      const [owner, repo] = githubRepo.split('/');
+      
+      // Get workflow runs for the commit
+      const runsResponse = await fetch(
+        `https://api.github.com/repos/${owner}/${repo}/actions/runs?head_sha=${commitSha}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${githubToken}`,
+            'Accept': 'application/vnd.github.v3+json',
+            'User-Agent': 'PolicyEngine-Dashboard/1.0'
+          }
+        }
+      );
+
+      if (!runsResponse.ok) {
+        if (runsResponse.status === 403) {
+          throw new Error(`GitHub API rate limit exceeded or token permissions insufficient (403). Please try again later or check your token permissions.`);
+        } else if (runsResponse.status === 404) {
+          throw new Error(`Repository or commit not found (404). Please check the repository name and commit SHA.`);
+        } else {
+          throw new Error(`Failed to fetch workflow runs: ${runsResponse.status} ${runsResponse.statusText}`);
+        }
+      }
+
+      const runsData = await runsResponse.json();
+      const runs = runsData.workflow_runs;
+
+      if (!runs || runs.length === 0) {
+        setError('No workflow runs found for this commit.');
+        return;
+      }
+
+      // Collect all calibration artifacts from completed runs
+      const allArtifacts: GitHubArtifact[] = [];
+      
+      for (const run of runs) {
+        if (run.status !== 'completed') continue;
+
+        try {
+          const artifactsResponse = await fetch(
+            `https://api.github.com/repos/${owner}/${repo}/actions/runs/${run.id}/artifacts`,
+            {
+              headers: {
+                'Authorization': `Bearer ${githubToken}`,
+                'Accept': 'application/vnd.github.v3+json',
+                'User-Agent': 'PolicyEngine-Dashboard/1.0'
+              }
+            }
+          );
+
+          if (!artifactsResponse.ok) continue;
+
+          const artifactsData = await artifactsResponse.json();
+          const artifacts = artifactsData.artifacts;
+
+          // Filter for calibration artifacts
+          const calibrationArtifacts = artifacts.filter((artifact: GitHubArtifact) => 
+            artifact.name.toLowerCase().includes('calibration') || 
+            artifact.name.toLowerCase().includes('log') ||
+            artifact.name.toLowerCase().includes('.csv')
+          );
+
+          allArtifacts.push(...calibrationArtifacts);
+        } catch {
+          continue;
+        }
+      }
+
+      if (allArtifacts.length === 0) {
+        setError('No calibration artifacts found for this commit.');
+        return;
+      }
+
+      // Remove duplicates and sort by creation date (newest first)
+      const uniqueArtifacts = allArtifacts
+        .filter((artifact, index, self) => 
+          index === self.findIndex(a => a.name === artifact.name)
+        )
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+      setSecondArtifacts(uniqueArtifacts);
+      
+      // Auto-select the first artifact
+      if (uniqueArtifacts.length > 0) {
+        setSelectedSecondArtifact(uniqueArtifacts[0].id.toString());
+      }
+
+    } catch (err) {
+      setError(`Failed to fetch artifacts: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    } finally {
+      setIsLoadingGithubData(false);
+    }
+  }
+
+  async function loadComparisonData() {
+    if (!selectedArtifact || !selectedSecondArtifact || !onCompareLoad) {
+      setError('Please select artifacts from both commits to compare');
+      return;
+    }
+
+    const firstArtifact = availableArtifacts.find(a => a.id.toString() === selectedArtifact);
+    const secondArtifact = secondArtifacts.find(a => a.id.toString() === selectedSecondArtifact);
+    
+    if (!firstArtifact || !secondArtifact) {
+      setError('Selected artifacts not found');
+      return;
+    }
+
+    const githubToken = process.env.NEXT_PUBLIC_GITHUB_TOKEN;
+    if (!githubToken) {
+      setError('GitHub token not configured. Please set NEXT_PUBLIC_GITHUB_TOKEN environment variable.');
+      return;
+    }
+
+    setIsLoading(true);
+    setError('');
+
+    try {
+      setError('🔄 Downloading and extracting CSV files for comparison...');
+      
+      // Download both artifacts
+      const [firstDownload, secondDownload] = await Promise.all([
+        fetch(firstArtifact.archive_download_url, {
+          headers: {
+            'Authorization': `Bearer ${githubToken}`,
+            'Accept': 'application/vnd.github.v3+json',
+            'User-Agent': 'PolicyEngine-Dashboard/1.0'
+          }
+        }),
+        fetch(secondArtifact.archive_download_url, {
+          headers: {
+            'Authorization': `Bearer ${githubToken}`,
+            'Accept': 'application/vnd.github.v3+json',
+            'User-Agent': 'PolicyEngine-Dashboard/1.0'
+          }
+        })
+      ]);
+
+      if (!firstDownload.ok || !secondDownload.ok) {
+        throw new Error('Failed to download one or both artifacts');
+      }
+
+      // Extract CSVs from both artifacts
+      const [firstZipBuffer, secondZipBuffer] = await Promise.all([
+        firstDownload.arrayBuffer(),
+        secondDownload.arrayBuffer()
+      ]);
+
+      const firstZip = new JSZip();
+      const secondZip = new JSZip();
+      const [firstZipContent, secondZipContent] = await Promise.all([
+        firstZip.loadAsync(firstZipBuffer),
+        secondZip.loadAsync(secondZipBuffer)
+      ]);
+
+      // Find CSV files in both ZIPs
+      const firstCsvFiles = Object.keys(firstZipContent.files).filter(filename => 
+        filename.toLowerCase().endsWith('.csv') && !firstZipContent.files[filename].dir
+      );
+      const secondCsvFiles = Object.keys(secondZipContent.files).filter(filename => 
+        filename.toLowerCase().endsWith('.csv') && !secondZipContent.files[filename].dir
+      );
+
+      if (firstCsvFiles.length === 0 || secondCsvFiles.length === 0) {
+        throw new Error('No CSV files found in one or both artifacts');
+      }
+
+      // Extract CSV content
+      const [firstCsvContent, secondCsvContent] = await Promise.all([
+        firstZipContent.files[firstCsvFiles[0]].async('text'),
+        secondZipContent.files[secondCsvFiles[0]].async('text')
+      ]);
+
+      // Apply epoch sampling to both
+      const firstSampled = sampleEpochs(firstCsvContent);
+      const secondSampled = sampleEpochs(secondCsvContent);
+
+      // Create display names with commit info
+      const firstCommitShort = selectedCommit.slice(0, 8);
+      const secondCommitShort = selectedSecondCommit.slice(0, 8);
+      
+      const firstBranchInfo = selectedBranch !== selectedSecondBranch ? ` (${selectedBranch})` : '';
+      const secondBranchInfo = selectedBranch !== selectedSecondBranch ? ` (${selectedSecondBranch})` : '';
+      
+      const firstName = `${firstCsvFiles[0]} @ ${firstCommitShort}${firstBranchInfo}`;
+      const secondName = `${secondCsvFiles[0]} @ ${secondCommitShort}${secondBranchInfo}`;
+
+      // Load into comparison mode
+      onCompareLoad(firstSampled.content, firstName, secondSampled.content, secondName);
+      setError('');
+
+    } catch (extractError) {
+      console.error('Comparison extraction error:', extractError);
+      setError(`❌ Failed to extract comparison data: ${extractError instanceof Error ? extractError.message : 'Unknown error'}`);
     } finally {
       setIsLoading(false);
     }
@@ -672,7 +930,7 @@ export default function FileUpload({ onFileLoad, onViewDashboard }: FileUploadPr
           }`}
         >
           <Upload className="w-4 h-4 inline mr-2" />
-          Drop File
+          Drop file
         </button>
         <button
           onClick={() => setActiveTab('url')}
@@ -788,7 +1046,7 @@ export default function FileUpload({ onFileLoad, onViewDashboard }: FileUploadPr
                   disabled={isLoading}
                   className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {isLoading ? 'Loading Sample...' : 'Load Sample Data'}
+                  {isLoading ? 'Loading Sample...' : 'Load sample data'}
                 </button>
               </div>
             </div>
@@ -831,6 +1089,34 @@ export default function FileUpload({ onFileLoad, onViewDashboard }: FileUploadPr
                       {isLoadingGithubData ? 'Loading...' : 'Fetch'}
                     </button>
                   </div>
+                </div>
+
+                {/* Comparison Mode Toggle */}
+                <div className="mb-4">
+                  <label className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={comparisonMode}
+                      onChange={(e) => {
+                        setComparisonMode(e.target.checked);
+                        if (!e.target.checked) {
+                          // Reset second selection states
+                          setSelectedSecondBranch('');
+                          setSecondCommits([]);
+                          setSelectedSecondCommit('');
+                          setSecondArtifacts([]);
+                          setSelectedSecondArtifact('');
+                        }
+                      }}
+                      className="mr-2 rounded"
+                    />
+                    <span className="text-sm font-medium text-gray-700">
+                      Compare two calibration runs (different branches/commits)
+                    </span>
+                  </label>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Enable this to compare calibration results between different branches or commits
+                  </p>
                 </div>
 
                 {/* Branch Selection */}
@@ -920,14 +1206,109 @@ export default function FileUpload({ onFileLoad, onViewDashboard }: FileUploadPr
                   </div>
                 )}
 
+                {/* Second Selection for Comparison */}
+                {comparisonMode && githubBranches.length > 0 && (
+                  <div className="border-t border-gray-200 pt-4 mt-6">
+                    <h4 className="text-md font-semibold text-gray-800 mb-4">Second Calibration Run (for comparison)</h4>
+                    
+                    {/* Second Branch Selection */}
+                    <div className="mb-4">
+                      <label htmlFor="github-second-branch" className="block text-sm font-medium text-gray-700 mb-2">
+                        Branch
+                      </label>
+                      <select
+                        id="github-second-branch"
+                        value={selectedSecondBranch}
+                        onChange={(e) => {
+                          setSelectedSecondBranch(e.target.value);
+                          fetchSecondBranchCommits(e.target.value);
+                        }}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="">Select a branch</option>
+                        {githubBranches.map((branch) => (
+                          <option key={`second-${branch.name}`} value={branch.name}>
+                            {branch.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Second Commit Selection */}
+                    {secondCommits.length > 0 && (
+                      <div className="mb-4">
+                        <label htmlFor="github-second-commit" className="block text-sm font-medium text-gray-700 mb-2">
+                          Commit
+                        </label>
+                        <select
+                          id="github-second-commit"
+                          value={selectedSecondCommit}
+                          onChange={(e) => {
+                            setSelectedSecondCommit(e.target.value);
+                            fetchSecondArtifacts(e.target.value);
+                          }}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          <option value="">Select a commit</option>
+                          {secondCommits.map((commit) => (
+                            <option key={`second-${commit.sha}`} value={commit.sha}>
+                              {commit.sha.slice(0, 8)} - {commit.commit.message.slice(0, 60)}
+                              {commit.commit.message.length > 60 ? '...' : ''}
+                            </option>
+                          ))}
+                        </select>
+                        {selectedSecondCommit && (
+                          <p className="text-sm text-gray-500 mt-1">
+                            {secondCommits.find(c => c.sha === selectedSecondCommit)?.commit.author.date && 
+                              new Date(secondCommits.find(c => c.sha === selectedSecondCommit)!.commit.author.date).toLocaleString()
+                            }
+                          </p>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Second Artifact Selection */}
+                    {secondArtifacts.length > 0 && (
+                      <div className="mb-4">
+                        <label htmlFor="github-second-artifact" className="block text-sm font-medium text-gray-700 mb-2">
+                          Artifact ({secondArtifacts.length} available)
+                        </label>
+                        <select
+                          id="github-second-artifact"
+                          value={selectedSecondArtifact}
+                          onChange={(e) => setSelectedSecondArtifact(e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          <option value="">Select an artifact</option>
+                          {secondArtifacts.map((artifact) => (
+                            <option key={`second-${artifact.id}`} value={artifact.id.toString()}>
+                              {artifact.name} ({(artifact.size_in_bytes / 1024).toFixed(1)} KB)
+                            </option>
+                          ))}
+                        </select>
+                        {selectedSecondArtifact && (
+                          <p className="text-sm text-gray-500 mt-1">
+                            {secondArtifacts.find(a => a.id.toString() === selectedSecondArtifact)?.created_at && 
+                              `Created: ${new Date(secondArtifacts.find(a => a.id.toString() === selectedSecondArtifact)!.created_at).toLocaleString()}`
+                            }
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {/* Load Button */}
-                {selectedArtifact && (
+                {selectedArtifact && (!comparisonMode || selectedSecondArtifact) && (
                   <button
-                    onClick={loadGithubArtifact}
+                    onClick={comparisonMode ? loadComparisonData : loadGithubArtifact}
                     disabled={isLoading}
                     className="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-md disabled:opacity-50"
                   >
-                    {isLoading ? 'Loading Artifact...' : 'Load Calibration Data'}
+                    {isLoading 
+                      ? (comparisonMode ? 'Loading comparison...' : 'Loading artifact...') 
+                      : (comparisonMode ? 'Compare calibration runs' : 'Load calibration data')
+                    }
                   </button>
                 )}
 
@@ -939,23 +1320,6 @@ export default function FileUpload({ onFileLoad, onViewDashboard }: FileUploadPr
                     <li>• ✅ Automatically finds calibration logs from CI/CD runs</li>
                     <li>• ✅ Full CSV extraction from ZIP artifacts</li>
                   </ul>
-                  
-                  {process.env.NODE_ENV === 'development' && (
-                    <button
-                      onClick={async () => {
-                        try {
-                          const response = await fetch('/api/test');
-                          const data = await response.json();
-                          alert(`API Test: ${JSON.stringify(data, null, 2)}`);
-                        } catch (err) {
-                          alert(`API Test Error: ${err}`);
-                        }
-                      }}
-                      className="mt-2 text-xs bg-gray-200 px-2 py-1 rounded"
-                    >
-                      Test API
-                    </button>
-                  )}
                 </div>
               </div>
             </div>
@@ -970,7 +1334,7 @@ export default function FileUpload({ onFileLoad, onViewDashboard }: FileUploadPr
             onClick={onViewDashboard}
             className="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-3 px-4 rounded-md transition-colors"
           >
-            View Dashboard
+            View dashboard
           </button>
         </div>
       )}
