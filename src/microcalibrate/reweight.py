@@ -24,7 +24,7 @@ device = torch.device(
 
 def reweight(
     original_weights: np.ndarray,
-    estimate_function: Optional[Callable[[Tensor], Tensor]],
+    estimate_function: Callable[[Tensor], Tensor],
     targets_array: np.ndarray,
     target_names: np.ndarray,
     dropout_rate: Optional[float] = 0.1,
@@ -37,7 +37,7 @@ def reweight(
 
     Args:
         original_weights (np.ndarray): Original weights to be reweighted.
-        estimate_function (Optional[Callable[[Tensor], Tensor]]): Function to estimate targets from weights.
+        estimate_function (Callable[[Tensor], Tensor]): Function to estimate targets from weights.
         targets_array (np.ndarray): Array of target values.
         target_names (np.ndarray): Names of the targets.
         dropout_rate (float): Optional probability of dropping weights during training.
