@@ -21,7 +21,6 @@ class Calibration:
         noise_level: Optional[float] = 10.0,
         learning_rate: Optional[float] = 1e-3,
         dropout_rate: Optional[float] = 0.1,
-        subsample_every: Optional[int] = 50,
         csv_path: Optional[str] = None,
         device: str = None,
     ):
@@ -37,7 +36,6 @@ class Calibration:
             noise_level (float): Optional level of noise to add to weights. Defaults to 10.0.
             learning_rate (float): Optional learning rate for the optimizer. Defaults to 1e-3.
             dropout_rate (float): Optional probability of dropping weights during training. Defaults to 0.1.
-            subsample_every (int): Optional frequency of subsampling during training. Defaults to 50.
             csv_path (str): Optional path to save performance logs as CSV. Defaults to None.
         """
 
@@ -69,12 +67,11 @@ class Calibration:
         self.noise_level = noise_level
         self.learning_rate = learning_rate
         self.dropout_rate = dropout_rate
-        self.subsample_every = subsample_every
         self.csv_path = csv_path
         self.performance_df = None
 
     def calibrate(self) -> None:
-        """Calibrate the weights based on the loss matrix and targets."""
+        """Calibrate the weights based on the estimate function and targets."""
 
         self._assess_targets(
             estimate_function=self.estimate_function,

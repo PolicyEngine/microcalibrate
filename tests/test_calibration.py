@@ -47,7 +47,6 @@ def test_calibration_basic() -> None:
         epochs=528,
         learning_rate=0.01,
         dropout_rate=0,
-        subsample_every=0,
     )
 
     # Call calibrate method on our data and targets of interest
@@ -103,7 +102,6 @@ def test_calibration_harder_targets() -> None:
         epochs=528,
         learning_rate=0.01,
         dropout_rate=0,
-        subsample_every=0,
         csv_path="calibration_log.csv",
     )
 
@@ -171,7 +169,6 @@ def test_calibration_warnings_system(caplog) -> None:
         epochs=128,
         learning_rate=0.01,
         dropout_rate=0,
-        subsample_every=0,
     )
 
     with caplog.at_level(logging.WARNING, logger="microcalibrate.calibration"):
