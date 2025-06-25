@@ -14,13 +14,6 @@ from .utils.metrics import loss, pct_close
 
 logger = logging.getLogger(__name__)
 
-# Add device variable to use gpu (incl mps) if available
-device = torch.device(
-    "cuda"
-    if torch.cuda.is_available()
-    else "mps" if torch.backends.mps.is_available() else "cpu"
-)
-
 
 def reweight(
     original_weights: np.ndarray,
@@ -32,6 +25,7 @@ def reweight(
     noise_level: Optional[float] = 10.0,
     learning_rate: Optional[float] = 1e-3,
     csv_path: Optional[str] = None,
+    device: Optional[str] = None,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Reweight the original weights based on the loss matrix and targets.
 
@@ -96,13 +90,13 @@ def reweight(
     optimizer = torch.optim.Adam([weights], lr=learning_rate)
 
     iterator = tqdm(range(epochs), desc="Reweighting progress", unit="epoch")
+    tracking_n = max(1, epochs // 10) if epochs > 10 else 1
 
     loss_over_epochs = []
     estimates_over_epochs = []
     pct_close_over_epochs = []
     epochs = []
 
-    tracking_n = 10  # Track every 10th epoch
     for i in iterator:
         optimizer.zero_grad()
         running_loss = None
