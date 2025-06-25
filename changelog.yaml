@@ -59,3 +59,8 @@
     added:
     - Adding GitHub artifact comparison to dashboard.
   date: 2025-06-25 14:58:22
+- bump: minor
+  changes:
+    added:
+    - Creating deeplinks.
+  date: 2025-06-25 17:27:46
