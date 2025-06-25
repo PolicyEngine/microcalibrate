@@ -5,8 +5,8 @@ Test the calibration process.
 import numpy as np
 import pandas as pd
 
-from src.microcalibrate.calibration import Calibration
-from src.microcalibrate.utils import simulate_contradictory_data
+from microcalibrate.calibration import Calibration
+from microcalibrate.utils import simulate_contradictory_data
 
 
 def test_calibration_basic() -> None:
