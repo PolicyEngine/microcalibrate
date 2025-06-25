@@ -29,7 +29,15 @@ interface RegressionStats {
 
 export default function RegressionAnalysis({ firstData, secondData }: RegressionAnalysisProps) {
   // Get final epoch data for both datasets
-  const getMaxEpoch = (data: CalibrationDataPoint[]) => Math.max(...data.map(d => d.epoch));
+  const getMaxEpoch = (data: CalibrationDataPoint[]) => {
+    let maxEpoch = -Infinity;
+    for (const point of data) {
+      if (point.epoch > maxEpoch) {
+        maxEpoch = point.epoch;
+      }
+    }
+    return maxEpoch;
+  };
   const firstMaxEpoch = getMaxEpoch(firstData);
   const secondMaxEpoch = getMaxEpoch(secondData);
   

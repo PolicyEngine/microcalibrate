@@ -657,7 +657,7 @@ export default function TargetConvergenceComparison({
             <ResponsiveContainer width="100%" height="100%">
               <BarChart 
                 data={barChartData} 
-                margin={{ top: 100, right: 30, left: 20, bottom: 80 }}
+                margin={{ top: 10, right: 30, left: 20, bottom: 80 }}
                 barGap={2}
               >
                 <CartesianGrid strokeDasharray="3 3" />
@@ -687,7 +687,7 @@ export default function TargetConvergenceComparison({
                 />
                 <Legend 
                   verticalAlign="top"
-                  height={80}
+                  height={0}
                   content={({ payload }: any) => {
                     const barItems = payload || [];
                     
@@ -716,7 +716,7 @@ export default function TargetConvergenceComparison({
                 />
                 
                 {/* Target Value Bars */}
-                <Bar dataKey="targetValue" name="Target alue" fill="#22c55e" />
+                <Bar dataKey="targetValue" name="Target value" fill="#22c55e" />
                 
                 {/* First Dataset Estimates */}
                 <Bar dataKey="firstEstimate" name={firstName} fill="#3b82f6" />
