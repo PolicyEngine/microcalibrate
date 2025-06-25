@@ -91,6 +91,7 @@ def reweight(
 
     iterator = tqdm(range(epochs), desc="Reweighting progress", unit="epoch")
     tracking_n = max(1, epochs // 10) if epochs > 10 else 1
+    progress_update_interval = 10
 
     loss_over_epochs = []
     estimates_over_epochs = []
@@ -112,12 +113,7 @@ def reweight(
 
         l = running_loss / 2
 
-        if i % tracking_n == 0:
-            epochs.append(i)
-            loss_over_epochs.append(l.item())
-            pct_close_over_epochs.append(close)
-            estimates_over_epochs.append(estimate.detach().cpu().numpy())
-
+        if i % progress_update_interval == 0:
             iterator.set_postfix(
                 {
                     "loss": l.item(),
@@ -126,6 +122,12 @@ def reweight(
                     "weights_min": torch.exp(weights).min().item(),
                 }
             )
+
+        if i % tracking_n == 0:
+            epochs.append(i)
+            loss_over_epochs.append(l.item())
+            pct_close_over_epochs.append(close)
+            estimates_over_epochs.append(estimate.detach().cpu().numpy())
 
             logger.info(f"Within 10% from targets: {close:.2%} \n")
 
