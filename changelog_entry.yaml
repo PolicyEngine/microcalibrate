@@ -1,4 +1,4 @@
 - bump: minor
   changes:
     added:
-    - Adding calibration summary section to dashboard.
+    - Adding GitHub artifact comparison to dashboard.

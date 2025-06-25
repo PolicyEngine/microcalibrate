@@ -132,7 +132,7 @@ export default function RegressionAnalysis({ firstData, secondData }: Regression
     { x: domain[1], y: stats.slope * domain[1] + stats.intercept }
   ];
 
-  const formatTooltip = (value: any, name: string) => {
+  const formatTooltip = (value: number, name: string) => {
     if (name === 'y') {
       return [`${value.toPrecision(3)}%`, 'Second dataset error'];
     }
@@ -143,9 +143,10 @@ export default function RegressionAnalysis({ firstData, secondData }: Regression
     return value.toPrecision(3);
   };
 
-  const formatLabel = (label: string, payload: any) => {
-    if (payload && payload.length > 0) {
-      return `Target: ${payload[0].payload.target_name}`;
+  const formatLabel = (label: string, payload: unknown) => {
+    if (Array.isArray(payload) && payload.length > 0 && payload[0] && typeof payload[0] === 'object' && 'payload' in payload[0]) {
+      const item = payload[0] as {payload: ScatterDataPoint};
+      return `Target: ${item.payload.target_name}`;
     }
     return label;
   };

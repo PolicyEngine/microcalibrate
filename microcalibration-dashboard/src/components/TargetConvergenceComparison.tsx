@@ -21,6 +21,16 @@ interface ConvergenceDataPoint {
   secondError: number | null;
 }
 
+interface LegendPayloadItem {
+  dataKey: string;
+  color: string;
+  value: string;
+}
+
+interface LegendClickData {
+  dataKey: string;
+}
+
 export default function TargetConvergenceComparison({ 
   firstData, 
   secondData, 
@@ -43,6 +53,28 @@ export default function TargetConvergenceComparison({
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [currentPage, setCurrentPage] = useState<number>(0);
   const MAX_DISPLAYED_TARGETS = 15;
+
+  // Initialize bar chart selections
+  useEffect(() => {
+    // Get all available epochs from both datasets
+    const allEpochs = new Set([
+      ...firstData.map(d => d.epoch),
+      ...secondData.map(d => d.epoch)
+    ]);
+    const sortedEpochs = Array.from(allEpochs).sort((a, b) => b - a);
+    
+    // Set default epoch to the latest
+    if (sortedEpochs.length > 0 && selectedEpoch === null) {
+      setSelectedEpoch(sortedEpochs[0]);
+    }
+
+    // No need to set default targets anymore - handled by search/pagination
+  }, [firstData, secondData, commonTargets, selectedEpoch]);
+
+  // Reset page when search changes
+  useEffect(() => {
+    setCurrentPage(0);
+  }, [searchQuery]);
 
   if (commonTargets.length === 0) {
     return (
@@ -96,23 +128,6 @@ export default function TargetConvergenceComparison({
   const convergenceData = prepareConvergenceData(selectedTarget);
   const targetValue = convergenceData[0]?.target ?? 0;
 
-  // Initialize bar chart selections
-  useEffect(() => {
-    // Get all available epochs from both datasets
-    const allEpochs = new Set([
-      ...firstData.map(d => d.epoch),
-      ...secondData.map(d => d.epoch)
-    ]);
-    const sortedEpochs = Array.from(allEpochs).sort((a, b) => b - a);
-    
-    // Set default epoch to the latest
-    if (sortedEpochs.length > 0 && selectedEpoch === null) {
-      setSelectedEpoch(sortedEpochs[0]);
-    }
-
-    // No need to set default targets anymore - handled by search/pagination
-  }, [firstData, secondData, commonTargets, selectedEpoch]);
-
   // Filter and paginate targets based on search
   const getFilteredTargets = () => {
     const filtered = commonTargets.filter(target => 
@@ -126,11 +141,6 @@ export default function TargetConvergenceComparison({
   const startIndex = currentPage * MAX_DISPLAYED_TARGETS;
   const endIndex = startIndex + MAX_DISPLAYED_TARGETS;
   const currentPageTargets = filteredTargets.slice(startIndex, endIndex);
-
-  // Reset page when search changes
-  useEffect(() => {
-    setCurrentPage(0);
-  }, [searchQuery]);
 
   // Prepare bar chart data
   const prepareBarChartData = () => {
@@ -199,7 +209,7 @@ export default function TargetConvergenceComparison({
     }
   };
 
-  const formatTooltip = (value: any, name: string) => {
+  const formatTooltip = (value: number, name: string) => {
     if (name === 'target') {
       return [formatValue(value), 'Target'];
     } else if (name === 'firstEstimate') {
@@ -210,7 +220,7 @@ export default function TargetConvergenceComparison({
     return [formatValue(value), name];
   };
 
-  const handleLegendClick = (data: any) => {
+  const handleLegendClick = (data: LegendClickData) => {
     const { dataKey } = data;
     if (dataKey === 'firstEstimate' || dataKey === 'secondEstimate') {
       setLineOpacity(prev => ({
@@ -220,41 +230,44 @@ export default function TargetConvergenceComparison({
     }
   };
 
-  const renderCustomLegend = ({ payload }: any) => {
+  const renderCustomLegend = (props: unknown) => {
+    const payload = (props as {payload?: LegendPayloadItem[]})?.payload;
+    if (!payload) return null;
     // put them in the order we want to show them
     const order = ['target', 'firstEstimate', 'secondEstimate'];
     const items = order
-      .map(key => payload.find((p: any) => p.dataKey === key))
+      .map(key => payload.find((p: LegendPayloadItem) => p.dataKey === key))
       .filter(Boolean);
 
     return (
       <div className="flex flex-col items-center space-y-2 pt-5">
-        {items.map((item: any) => {
-          const isFirst = item.dataKey === 'firstEstimate';
-          const isSecond = item.dataKey === 'secondEstimate';
+        {items.filter(Boolean).map((item) => {
+          const typedItem = item as LegendPayloadItem;
+          const isFirst = typedItem.dataKey === 'firstEstimate';
+          const isSecond = typedItem.dataKey === 'secondEstimate';
 
           return (
             <div
-              key={item.dataKey}
+              key={typedItem.dataKey}
               className="flex items-center space-x-2 cursor-pointer"
               onClick={() => {
-                if (isFirst || isSecond) handleLegendClick(item);
+                if (isFirst || isSecond) handleLegendClick(typedItem);
               }}
             >
               {/* little line ▸ dashed for target, solid for others */}
               <div
                 className="w-6 border-t-2"
                 style={{
-                  borderStyle: item.dataKey === 'target' ? 'dashed' : 'solid',
+                  borderStyle: typedItem.dataKey === 'target' ? 'dashed' : 'solid',
                   borderColor:
-                    item.dataKey === 'target' ? '#dc2626' : item.color,
+                    typedItem.dataKey === 'target' ? '#dc2626' : typedItem.color,
                 }}
               />
               <span
                 className="text-sm font-medium"
                 style={{
                   color:
-                    item.dataKey === 'target' ? '#dc2626' : item.color,
+                    typedItem.dataKey === 'target' ? '#dc2626' : typedItem.color,
                   opacity:
                     isFirst
                       ? lineOpacity.firstEstimate
@@ -263,7 +276,7 @@ export default function TargetConvergenceComparison({
                       : 1,
                 }}
               >
-                {item.value}
+                {typedItem.value}
               </span>
             </div>
           );
@@ -466,7 +479,7 @@ export default function TargetConvergenceComparison({
                 tick={{ fontSize: 10 }}
               />
               <Tooltip 
-                formatter={(value: any, name: string) => {
+                formatter={(value: number, name: string) => {
                   if (name === 'firstError') {
                     return [`${(value * 100).toFixed(3)}%`, `${firstName} error`];
                   } else if (name === 'secondError') {
@@ -477,14 +490,15 @@ export default function TargetConvergenceComparison({
                 labelFormatter={(label) => `Epoch: ${label}`}
               />
               <Legend 
-                content={({ payload }: any) => {
-                  const errorItems = payload?.filter((item: any) => 
+                content={(props: unknown) => {
+                  const payload = (props as {payload?: Array<{dataKey: string, value: number, color: string}>})?.payload;
+                  const errorItems = payload?.filter((item) => 
                     item.dataKey === 'firstError' || item.dataKey === 'secondError'
                   ) || [];
 
                   return (
                     <div className="flex flex-col items-center space-y-2 pt-5">
-                      {errorItems.map((item: any) => {
+                      {errorItems.map((item) => {
                         const isFirst = item.dataKey === 'firstError';
                         const currentOpacity = isFirst ? lineOpacity.firstEstimate : lineOpacity.secondEstimate;
                         
@@ -605,7 +619,7 @@ export default function TargetConvergenceComparison({
           {/* Results Info */}
           {searchQuery && (
             <div className="mb-3 text-xs text-gray-600">
-              Found {filteredTargets.length} target{filteredTargets.length !== 1 ? 's' : ''} containing "{searchQuery}"
+              Found {filteredTargets.length} target{filteredTargets.length !== 1 ? 's' : ''} containing &quot;{searchQuery}&quot;
               {filteredTargets.length > MAX_DISPLAYED_TARGETS && (
                 <span className="ml-2 text-yellow-700">
                   (showing {MAX_DISPLAYED_TARGETS} per page)
@@ -675,7 +689,7 @@ export default function TargetConvergenceComparison({
                   label={{ value: 'Value', angle: -90, position: 'insideLeft', textAnchor: 'middle', fontSize: 12 }}
                 />
                 <Tooltip 
-                  formatter={(value: any, name: string) => {
+                  formatter={(value: number, name: string) => {
                     const labels = {
                       targetValue: 'Target value',
                       firstEstimate: `${firstName} Estimate`,
@@ -688,12 +702,13 @@ export default function TargetConvergenceComparison({
                 <Legend 
                   verticalAlign="top"
                   height={0}
-                  content={({ payload }: any) => {
+                  content={(props: unknown) => {
+                    const payload = (props as {payload?: Array<{dataKey: string, value: number, color: string}>})?.payload;
                     const barItems = payload || [];
                     
                     return (
                       <div className="flex flex-col items-center space-y-2 pb-4">
-                        {barItems.map((item: any, index: number) => (
+                        {barItems.map((item, index: number) => (
                           <div
                             key={index}
                             className="flex items-center space-x-2"
@@ -730,7 +745,7 @@ export default function TargetConvergenceComparison({
           <div className="h-32 flex items-center justify-center bg-gray-50 rounded-lg">
             <p className="text-gray-600">
               {filteredTargets.length === 0 && searchQuery
-                ? `No targets found matching "${searchQuery}"`
+                ? `No targets found matching &quot;${searchQuery}&quot;`
                 : filteredTargets.length === 0
                 ? 'Enter a search term to find targets'
                 : selectedEpoch === null 
