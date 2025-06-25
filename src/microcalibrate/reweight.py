@@ -4,6 +4,7 @@ from typing import Callable, Optional
 
 import numpy as np
 import pandas as pd
+from pathlib import Path
 import torch
 from torch import Tensor
 from tqdm import tqdm
@@ -157,7 +158,7 @@ def reweight(
 
     if csv_path:
         # Create directory if it doesn't exist
-        os.makedirs(os.path.dirname(csv_path), exist_ok=True)
+        csv_path = Path(csv_path).exists()
         performance_df.to_csv(csv_path, index=True)
 
     logger.info(f"Reweighting completed. Final sample size: {len(weights)}")
