@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import FileUpload from '@/components/FileUpload';
 import MetricsOverview from '@/components/MetricsOverview';
 import LossChart from '@/components/LossChart';
@@ -13,6 +13,8 @@ import TargetConvergenceComparison from '@/components/TargetConvergenceCompariso
 import DataTable from '@/components/DataTable';
 import { CalibrationDataPoint } from '@/types/calibration';
 import { parseCalibrationCSV } from '@/utils/csvParser';
+import { getCurrentDeeplinkParams, generateShareableUrl, DeeplinkParams } from '@/utils/deeplinks';
+import { Share } from 'lucide-react';
 
 export default function Dashboard() {
   const [data, setData] = useState<CalibrationDataPoint[]>([]);
@@ -24,6 +26,13 @@ export default function Dashboard() {
   const [comparisonMode, setComparisonMode] = useState<boolean>(false);
   const [secondData, setSecondData] = useState<CalibrationDataPoint[]>([]);
   const [secondFilename, setSecondFilename] = useState<string>('');
+  
+  // Deeplink state
+  const [deeplinkParams, setDeeplinkParams] = useState<DeeplinkParams | null>(null);
+  const [isLoadingFromDeeplink, setIsLoadingFromDeeplink] = useState<boolean>(false);
+  
+  // GitHub artifact state for sharing
+  const [githubArtifactInfo, setGithubArtifactInfo] = useState<DeeplinkParams | null>(null);
 
   const handleFileLoad = (content: string, name: string) => {
     try {
@@ -65,6 +74,34 @@ export default function Dashboard() {
       setSecondFilename('');
       setComparisonMode(false);
       setShowDashboard(false);
+    }
+  };
+
+  // Check for deeplink parameters on mount
+  useEffect(() => {
+    const params = getCurrentDeeplinkParams();
+    if (params) {
+      setDeeplinkParams(params);
+      setIsLoadingFromDeeplink(true);
+    }
+  }, []);
+
+  // Generate shareable URL for current dashboard state
+  const generateShareUrl = (): string => {
+    const shareParams = githubArtifactInfo || deeplinkParams;
+    if (!shareParams) return window.location.href;
+    return generateShareableUrl(shareParams);
+  };
+
+  // Copy share URL to clipboard
+  const handleShare = async () => {
+    try {
+      const shareUrl = generateShareUrl();
+      await navigator.clipboard.writeText(shareUrl);
+      alert('Shareable URL copied to clipboard!');
+    } catch (err) {
+      console.error('Failed to copy URL:', err);
+      alert('Failed to copy URL to clipboard');
     }
   };
 
@@ -117,6 +154,17 @@ export default function Dashboard() {
                 console.log('View Dashboard clicked, data length:', data.length);
                 setShowDashboard(true);
               }}
+              deeplinkParams={deeplinkParams}
+              isLoadingFromDeeplink={isLoadingFromDeeplink}
+              onDeeplinkLoadComplete={(primary, secondary) => {
+                const params = { mode: secondary ? 'comparison' : 'single', primary, secondary } as DeeplinkParams;
+                setDeeplinkParams(params);
+                setGithubArtifactInfo(params);
+                setIsLoadingFromDeeplink(false);
+              }}
+              onGithubLoad={(primary, secondary) => {
+                setGithubArtifactInfo({ mode: secondary ? 'comparison' : 'single', primary, secondary });
+              }}
             />
           </div>
         )}
@@ -124,8 +172,17 @@ export default function Dashboard() {
         {/* Dashboard Content */}
         {showDashboard && (
           <div className="space-y-6">
-            {/* Load New File Button */}
-            <div className="flex justify-end">
+            {/* Load New File and Share Buttons */}
+            <div className="flex justify-end gap-3">
+              {(githubArtifactInfo || deeplinkParams) && (
+                <button
+                  onClick={handleShare}
+                  className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm font-medium flex items-center gap-2"
+                >
+                  <Share size={16} />
+                  Share Dashboard
+                </button>
+              )}
               <button
                 onClick={() => {
                   setData([]);
@@ -135,6 +192,9 @@ export default function Dashboard() {
                   setComparisonMode(false);
                   setError('');
                   setShowDashboard(false);
+                  setDeeplinkParams(null);
+                  setIsLoadingFromDeeplink(false);
+                  setGithubArtifactInfo(null);
                 }}
                 className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium"
               >
