@@ -49,3 +49,8 @@
     added:
     - Small performance dashboard fix.
   date: 2025-06-24 16:38:27
+- bump: minor
+  changes:
+    added:
+    - Estimate function, over loss matrix.
+  date: 2025-06-25 14:31:58
