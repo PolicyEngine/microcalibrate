@@ -40,22 +40,19 @@ def test_calibration_basic() -> None:
     )
 
     calibrator = Calibration(
-        loss_matrix=targets_matrix,
+        estimate_matrix=targets_matrix,
         weights=weights,
         targets=targets,
         noise_level=0.05,
         epochs=528,
         learning_rate=0.01,
         dropout_rate=0,
-        subsample_every=0,
     )
 
     # Call calibrate method on our data and targets of interest
     performance_df = calibrator.calibrate()
 
-    final_estimates = (
-        targets_matrix.mul(calibrator.weights, axis=0).sum().values
-    )
+    final_estimates = calibrator.estimate()
 
     # Check that the calibration process has improved the weights
     np.testing.assert_allclose(
@@ -98,23 +95,20 @@ def test_calibration_harder_targets() -> None:
     )
 
     calibrator = Calibration(
-        loss_matrix=targets_matrix,
+        estimate_matrix=targets_matrix,
         weights=weights,
         targets=targets,
         noise_level=0.05,
         epochs=528,
         learning_rate=0.01,
         dropout_rate=0,
-        subsample_every=0,
-        csv_path="./microcalibration-dashboard/public/calibration_log.csv",
+        csv_path="calibration_log.csv",
     )
 
     # Call calibrate method on our data and targets of interest
     performance_df = calibrator.calibrate()
 
-    final_estimates = (
-        targets_matrix.mul(calibrator.weights, axis=0).sum().values
-    )
+    final_estimates = calibrator.estimate()
 
     # Check that the calibration process has improved the weights
     np.testing.assert_allclose(
@@ -168,14 +162,13 @@ def test_calibration_warnings_system(caplog) -> None:
     )
 
     calibrator = Calibration(
-        loss_matrix=targets_matrix,
+        estimate_matrix=targets_matrix,
         weights=weights,
         targets=targets,
         noise_level=0.05,
         epochs=128,
         learning_rate=0.01,
         dropout_rate=0,
-        subsample_every=0,
     )
 
     with caplog.at_level(logging.WARNING, logger="microcalibrate.calibration"):
