@@ -1,10 +1,10 @@
 import logging
 import os
+from pathlib import Path
 from typing import Callable, Optional
 
 import numpy as np
 import pandas as pd
-from pathlib import Path
 import torch
 from torch import Tensor
 from tqdm import tqdm
