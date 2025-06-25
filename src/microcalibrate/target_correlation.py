@@ -11,12 +11,12 @@ device = torch.device(
 
 def analyse_targets(
     weights,
-    loss_matrix,
+    estimate_matrix,
     targets_array,
 ):
-    target_names = np.array(loss_matrix.columns)
-    loss_matrix = torch.tensor(
-        loss_matrix.values, dtype=torch.float32, device=device
+    target_names = np.array(estimate_matrix.columns)
+    estimate_matrix = torch.tensor(
+        estimate_matrix.values, dtype=torch.float32, device=device
     )
     targets_array = torch.tensor(
         targets_array, dtype=torch.float32, device=device
@@ -26,7 +26,7 @@ def analyse_targets(
     )
 
     # Compute estimates
-    estimate = torch.exp(weights) @ loss_matrix
+    estimate = torch.exp(weights) @ estimate_matrix
 
     # Compute relative errors for each target
     rel_errors = ((estimate - targets_array) / targets_array) ** 2
@@ -34,7 +34,7 @@ def analyse_targets(
     # Use jacobian to compute gradients for all targets at once
     gradients = torch.autograd.functional.jacobian(
         func=lambda w: (
-            (torch.exp(w) @ loss_matrix - targets_array) / targets_array
+            (torch.exp(w) @ estimate_matrix - targets_array) / targets_array
         )
         ** 2,
         inputs=weights,

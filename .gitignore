@@ -82,7 +82,6 @@ celerybeat.pid
 
 # Ignore Data Files
 **/*.csv
-# !microcalibration-dashboard/public/calibration_log.csv
 *.jpg
 *.html
 *.h5

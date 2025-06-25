@@ -1,12 +1,12 @@
 import logging
 import os
-from typing import Optional, Callable
+from typing import Callable, Optional
 
 import numpy as np
 import pandas as pd
 import torch
-from tqdm import tqdm
 from torch import Tensor
+from tqdm import tqdm
 
 from .utils.log_performance import log_performance_over_epochs
 from .utils.metrics import loss, pct_close
@@ -58,7 +58,6 @@ def reweight(
         f"Original weights - mean: {original_weights.mean():.4f}, "
         f"std: {original_weights.std():.4f}"
     )
-    
 
     targets = torch.tensor(targets_array, dtype=torch.float32, device=device)
     random_noise = np.random.random(original_weights.shape) * noise_level

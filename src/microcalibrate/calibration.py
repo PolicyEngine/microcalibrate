@@ -1,10 +1,10 @@
 import logging
-from typing import Optional, Callable
-import torch
-from torch import Tensor
+from typing import Callable, Optional
 
 import numpy as np
 import pandas as pd
+import torch
+from torch import Tensor
 
 logger = logging.getLogger(__name__)
 
@@ -15,7 +15,7 @@ class Calibration:
         weights: np.ndarray,
         targets: np.ndarray,
         target_names: Optional[np.ndarray] = None,
-        loss_matrix: Optional[pd.DataFrame] = None,
+        estimate_matrix: Optional[pd.DataFrame] = None,
         estimate_function: Optional[Callable[[Tensor], Tensor]] = None,
         epochs: Optional[int] = 32,
         noise_level: Optional[float] = 10.0,
@@ -23,11 +23,12 @@ class Calibration:
         dropout_rate: Optional[float] = 0.1,
         subsample_every: Optional[int] = 50,
         csv_path: Optional[str] = None,
+        device: str = None,
     ):
         """Initialize the Calibration class.
 
         Args:
-            loss_matrix (pd.DataFrame): DataFrame containing the loss matrix.
+            estimate_matrix (pd.DataFrame): DataFrame containing the estimate matrix.
             weights (np.ndarray): Array of original weights.
             targets (np.ndarray): Array of target values.
             epochs (int): Optional number of epochs for calibration. Defaults to 32.
@@ -41,11 +42,25 @@ class Calibration:
         self.estimate_function = estimate_function
         self.target_names = target_names
 
+        if device is not None:
+            self.device = torch.device(device)
+        else:
+            self.device = torch.device(
+                "cuda"
+                if torch.cuda.is_available()
+                else "mps" if torch.mps.is_available() else "cpu"
+            )
+
         if self.estimate_function is None:
-            self.estimate_function = lambda weights: weights @ loss_matrix
-        if loss_matrix is not None:
-            self.loss_matrix = loss_matrix
-            self.target_names = loss_matrix.columns.to_numpy()
+            self.estimate_function = (
+                lambda weights: weights @ self.estimate_matrix_tensor
+            )
+        if estimate_matrix is not None:
+            self.estimate_matrix = estimate_matrix
+            self.estimate_matrix_tensor = torch.tensor(
+                estimate_matrix.values, dtype=torch.float32, device=self.device
+            )
+            self.target_names = estimate_matrix.columns.to_numpy()
         self.weights = weights
         self.targets = targets
         self.epochs = epochs
@@ -61,6 +76,7 @@ class Calibration:
 
         self._assess_targets(
             estimate_function=self.estimate_function,
+            estimate_matrix=self.estimate_matrix,
             weights=self.weights,
             targets=self.targets,
             target_names=self.target_names,
@@ -84,22 +100,35 @@ class Calibration:
 
         return self.performance_df
 
+    def estimate(self) -> pd.Series:
+        return pd.Series(
+            index=self.target_names,
+            data=self.estimate_function(
+                torch.tensor(
+                    self.weights, dtype=torch.float32, device=self.device
+                )
+            )
+            .cpu()
+            .detach()
+            .numpy(),
+        )
+
     def _assess_targets(
         self,
         estimate_function: Callable[[Tensor], Tensor],
+        estimate_matrix: Optional[pd.DataFrame],
         weights: np.ndarray,
         targets: np.ndarray,
         target_names: Optional[np.ndarray] = None,
-        loss_matrix: Optional[pd.DataFrame] = None,
     ) -> None:
         """Assess the targets to ensure they do not violate basic requirements like compatibility, correct order of magnitude, etc.
 
         Args:
             estimate_function (Callable[[Tensor], Tensor]): Function to estimate the targets from weights.
+            estimate_matrix (Optional[pd.DataFrame]): DataFrame containing the estimate matrix. Defaults to None.
             weights (np.ndarray): Array of original weights.
             targets (np.ndarray): Array of target values.
             target_names (np.ndarray): Optional names of the targets for logging. Defaults to None.
-            loss_matrix (pd.DataFrame): Optional DataFrame containing the loss matrix. Defaults to None.
 
         Raises:
             ValueError: If the targets do not match the expected format or values.
@@ -109,7 +138,7 @@ class Calibration:
 
         if targets.ndim != 1:
             raise ValueError("Targets must be a 1D NumPy array.")
-        
+
         if np.any(np.isnan(targets)):
             raise ValueError("Targets contain NaN values.")
 
@@ -119,10 +148,18 @@ class Calibration:
             )
 
         # Estimate order of magnitude from column sums and warn if they are off by an order of magnitude from targets
-        one_weights = np.ones((1, weights.shape[0]))
-        estimates = estimate_function(
-            Tensor(one_weights, dtype=torch.float32)
-        ).cpu().numpy().flatten()
+        one_weights = np.ones((1, weights.shape[0]), dtype=np.float32)
+        estimates = (
+            estimate_function(
+                torch.tensor(
+                    one_weights, dtype=torch.float32, device=self.device
+                )
+            )
+            .cpu()
+            .detach()
+            .numpy()
+            .flatten()
+        )
         # Use a small epsilon to avoid division by zero
         eps = 1e-4
         adjusted_estimates = np.where(estimates == 0, eps, estimates)
@@ -142,9 +179,11 @@ class Calibration:
                     f"Target {target_names[i]} ({target_val:.2e}) differs from initial estimate ({estimate_val:.2e}) "
                     f"by {order_diff:.2f} orders of magnitude."
                 )
-            if loss_matrix is not None:
-                contributing_mask = loss_matrix.iloc[:, i] != 0
-                contribution_ratio = contributing_mask.sum() / loss_matrix.shape[0]
+            if estimate_matrix is not None:
+                contributing_mask = estimate_matrix.iloc[:, i] != 0
+                contribution_ratio = (
+                    contributing_mask.sum() / estimate_matrix.shape[0]
+                )
                 if contribution_ratio < 0.01:
                     logger.warning(
                         f"Target {target_names[i]} is supported by only {contribution_ratio:.2%} "
