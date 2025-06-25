@@ -61,6 +61,8 @@ class Calibration:
                 estimate_matrix.values, dtype=torch.float32, device=self.device
             )
             self.target_names = estimate_matrix.columns.to_numpy()
+        else:
+            self.estimate_matrix = None
         self.weights = weights
         self.targets = targets
         self.epochs = epochs
@@ -93,6 +95,7 @@ class Calibration:
             learning_rate=self.learning_rate,
             dropout_rate=self.dropout_rate,
             csv_path=self.csv_path,
+            device=self.device,
         )
 
         self.weights = new_weights
@@ -147,7 +150,7 @@ class Calibration:
             )
 
         # Estimate order of magnitude from column sums and warn if they are off by an order of magnitude from targets
-        one_weights = np.ones((1, weights.shape[0]), dtype=np.float32)
+        one_weights = weights * 0 + 1
         estimates = (
             estimate_function(
                 torch.tensor(
