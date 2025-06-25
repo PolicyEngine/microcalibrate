@@ -126,11 +126,6 @@ export default function RegressionAnalysis({ firstData, secondData }: Regression
   const minError = Math.min(...allErrors);
   const domain = [Math.max(0, minError - 1), maxError + 1];
 
-  // Create regression line data
-  const regressionLineData = [
-    { x: domain[0], y: stats.slope * domain[0] + stats.intercept },
-    { x: domain[1], y: stats.slope * domain[1] + stats.intercept }
-  ];
 
   const formatTooltip = (value: number, name: string) => {
     if (name === 'y') {
@@ -165,16 +160,16 @@ export default function RegressionAnalysis({ firstData, secondData }: Regression
           <div className="text-xs text-gray-600">Correlation (r)</div>
         </div>
         <div className="bg-white border-2 border-gray-300 rounded-lg p-3 text-center shadow-sm">
-          <div className="text-lg font-bold text-gray-800">{(stats.rSquared * 100).toFixed(1)}%</div>
-          <div className="text-xs text-gray-600">R-squared</div>
-        </div>
-        <div className="bg-white border-2 border-gray-300 rounded-lg p-3 text-center shadow-sm">
-          <div className="text-lg font-bold text-gray-800">{stats.slope.toFixed(3)}</div>
-          <div className="text-xs text-gray-600">Slope</div>
+          <div className="text-lg font-bold text-gray-800">{worseCount}</div>
+          <div className="text-xs text-gray-600">Better in 1st</div>
         </div>
         <div className="bg-white border-2 border-gray-300 rounded-lg p-3 text-center shadow-sm">
           <div className="text-lg font-bold text-gray-800">{betterCount}</div>
           <div className="text-xs text-gray-600">Better in 2nd</div>
+        </div>
+        <div className="bg-white border-2 border-gray-300 rounded-lg p-3 text-center shadow-sm">
+          <div className="text-lg font-bold text-gray-800">{stats.slope.toFixed(3)}</div>
+          <div className="text-xs text-gray-600">Slope</div>
         </div>
       </div>
 
@@ -215,19 +210,13 @@ export default function RegressionAnalysis({ firstData, secondData }: Regression
                 strokeWidth={2}
               />
               
-              {/* Regression line */}
-              <ReferenceLine 
-                segment={regressionLineData}
-                stroke="#dc2626" 
-                strokeWidth={2}
-              />
-              
               {/* Data points */}
               <Scatter 
                 name="Targets" 
                 data={scatterData} 
                 fill="#3b82f6"
                 fillOpacity={0.6}
+                r={3}
               />
             </ScatterChart>
           </ResponsiveContainer>
@@ -236,10 +225,6 @@ export default function RegressionAnalysis({ firstData, secondData }: Regression
           <div className="flex items-center">
             <div className="w-3 h-0.5 bg-gray-400 mr-1"></div>
             <span>Equality line (y = x)</span>
-          </div>
-          <div className="flex items-center">
-            <div className="w-3 h-0.5 bg-red-600 mr-1"></div>
-            <span>Regression line</span>
           </div>
         </div>
       </div>
@@ -250,10 +235,7 @@ export default function RegressionAnalysis({ firstData, secondData }: Regression
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
           <div>
             <p className="text-gray-700 mb-2">
-              <strong>Correlation:</strong> {stats.correlation > 0.7 ? 'Strong positive' : stats.correlation > 0.3 ? 'Moderate positive' : stats.correlation > -0.3 ? 'Weak' : stats.correlation > -0.7 ? 'Moderate negative' : 'Strong negative'} relationship (r = {stats.correlation.toFixed(3)})
-            </p>
-            <p className="text-gray-700 mb-2">
-              <strong>R-squared:</strong> {(stats.rSquared * 100).toFixed(1)}% of variance explained by the linear relationship
+              <strong>Correlation:</strong> {stats.correlation > 0.7 ? 'Strong positive' : stats.correlation > 0.3 ? 'Moderate positive' : stats.correlation > -0.3 ? 'Weak' : stats.correlation > -0.7 ? 'Moderate negative' : 'Strong negative'} similarity (r = {stats.correlation.toFixed(3)}). Higher correlation indicates the two datasets have similar error patterns across targets.
             </p>
             <p className="text-gray-700">
               <strong>Slope:</strong> {stats.slope > 1.1 ? 'Second dataset errors increase faster' : stats.slope < 0.9 ? 'Second dataset has lower error growth' : 'Similar error scaling'} (slope = {stats.slope.toFixed(3)})
@@ -261,15 +243,25 @@ export default function RegressionAnalysis({ firstData, secondData }: Regression
           </div>
           <div>
             <p className="text-gray-700 mb-2">
-              <strong>Performance:</strong> {betterCount} targets improved, {worseCount} worsened, {sameCount} similar
-            </p>
-            <p className="text-gray-700 mb-2">
-              <strong>Average errors:</strong> {stats.meanFirstError.toFixed(2)}% → {stats.meanSecondError.toFixed(2)}%
+              <strong>Performance change:</strong> When moving from the first to the second dataset, {betterCount} targets improved, {worseCount} worsened, {sameCount} remained similar
             </p>
             <p className="text-gray-700">
-              <strong>Overall trend:</strong> {stats.meanSecondError < stats.meanFirstError ? '📈 Second dataset performs better on average' : stats.meanSecondError > stats.meanFirstError ? '📉 First dataset performs better on average' : '➖ Similar average performance'}
+              <strong>Average errors:</strong> {stats.meanFirstError.toFixed(2)}% → {stats.meanSecondError.toFixed(2)}%
             </p>
           </div>
+        </div>
+      </div>
+
+      {/* Overall Trend - Prominent Box */}
+      <div className="mt-6 bg-blue-50 border-2 border-blue-200 rounded-lg p-6">
+        <div className="text-center">
+          <h4 className="text-lg font-bold text-blue-900 mb-2">Overall performance trend</h4>
+          <p className="text-blue-800 text-lg">
+            {stats.meanSecondError < stats.meanFirstError ? '📈 Second dataset performs better on average' : stats.meanSecondError > stats.meanFirstError ? '📉 First dataset performs better on average' : '➖ Similar average performance'}
+          </p>
+          <p className="text-blue-700 text-sm mt-2">
+            Average error change: {stats.meanFirstError.toFixed(2)}% → {stats.meanSecondError.toFixed(2)}%
+          </p>
         </div>
       </div>
     </div>

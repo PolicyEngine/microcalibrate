@@ -7,6 +7,7 @@ import LossChart from '@/components/LossChart';
 import ErrorDistribution from '@/components/ErrorDistribution';
 import CalibrationSummary from '@/components/CalibrationSummary';
 import ComparisonSummary from '@/components/ComparisonSummary';
+import ComparisonQualitySummary from '@/components/ComparisonQualitySummary';
 import RegressionAnalysis from '@/components/RegressionAnalysis';
 import TargetConvergenceComparison from '@/components/TargetConvergenceComparison';
 import DataTable from '@/components/DataTable';
@@ -146,6 +147,12 @@ export default function Dashboard() {
                 {comparisonMode ? (
                   // Comparison Mode Dashboard
                   <>
+                    <ComparisonQualitySummary 
+                      firstData={data} 
+                      secondData={secondData} 
+                      firstName={filename} 
+                      secondName={secondFilename} 
+                    />
                     <ComparisonSummary 
                       firstData={data} 
                       secondData={secondData} 

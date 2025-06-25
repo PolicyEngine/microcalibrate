@@ -30,7 +30,7 @@ export function getCalibrationMetrics(data: CalibrationDataPoint[]): Calibration
 
   const epochs = [...new Set(data.map(d => d.epoch))].sort((a, b) => a - b);
   const targetNames = [...new Set(data.map(d => d.target_name))];
-  const finalEpoch = Math.max(...epochs);
+  const finalEpoch = epochs.length > 0 ? epochs[epochs.length - 1] : 0;
   const finalLoss = data.find(d => d.epoch === finalEpoch)?.loss || 0;
 
   // Find convergence epoch (when loss stops decreasing significantly)

@@ -11,6 +11,25 @@ interface LossChartProps {
 export default function LossChart({ data }: LossChartProps) {
   const targetNames = [...new Set(data.map(d => d.target_name))];
   const [selectedTarget, setSelectedTarget] = useState<string>(targetNames[0] || '');
+  const [targetSearchQuery, setTargetSearchQuery] = useState<string>('');
+  const [showTargetDropdown, setShowTargetDropdown] = useState<boolean>(false);
+
+  // Filter targets based on search query
+  const searchFilteredTargets = targetNames.filter(target =>
+    target.toLowerCase().includes(targetSearchQuery.toLowerCase())
+  ).sort((a, b) => {
+    // Sort by relevance: exact matches first, then starts with, then contains
+    const queryLower = targetSearchQuery.toLowerCase();
+    const aLower = a.toLowerCase();
+    const bLower = b.toLowerCase();
+    
+    if (aLower === queryLower) return -1;
+    if (bLower === queryLower) return 1;
+    if (aLower.startsWith(queryLower) && !bLower.startsWith(queryLower)) return -1;
+    if (bLower.startsWith(queryLower) && !aLower.startsWith(queryLower)) return 1;
+    
+    return a.localeCompare(b);
+  });
 
   if (targetNames.length === 0) {
     return (
@@ -77,21 +96,55 @@ export default function LossChart({ data }: LossChartProps) {
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold text-gray-900">Target convergence analysis</h3>
         <div className="flex items-center space-x-3">
-          <label htmlFor="target-select" className="text-sm font-medium text-gray-700">
+          <label className="text-sm font-medium text-gray-700">
             Select target:
           </label>
-          <select
-            id="target-select"
-            value={selectedTarget}
-            onChange={(e) => setSelectedTarget(e.target.value)}
-            className="border border-gray-300 rounded-md px-3 py-1 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-          >
-            {targetNames.map(name => (
-              <option key={name} value={name}>
-                {name}
-              </option>
-            ))}
-          </select>
+          <div className="relative min-w-0" style={{ minWidth: '200px' }}>
+            <input
+              type="text"
+              placeholder="Search targets..."
+              value={targetSearchQuery}
+              onChange={(e) => {
+                setTargetSearchQuery(e.target.value);
+                setShowTargetDropdown(true);
+              }}
+              onFocus={() => setShowTargetDropdown(true)}
+              onBlur={() => setTimeout(() => setShowTargetDropdown(false), 150)}
+              className="w-full border border-gray-300 rounded-md px-3 py-1 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+            {selectedTarget && (
+              <div className="mt-1 text-xs text-gray-600 truncate" title={selectedTarget}>
+                Selected: {selectedTarget}
+              </div>
+            )}
+            
+            {/* Dropdown */}
+            {showTargetDropdown && searchFilteredTargets.length > 0 && (
+              <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                {searchFilteredTargets.slice(0, 10).map(target => (
+                  <div
+                    key={target}
+                    onClick={() => {
+                      setSelectedTarget(target);
+                      setTargetSearchQuery('');
+                      setShowTargetDropdown(false);
+                    }}
+                    className={`px-3 py-2 text-sm cursor-pointer hover:bg-blue-50 ${
+                      target === selectedTarget ? 'bg-blue-100 text-blue-800' : 'text-gray-900'
+                    }`}
+                    title={target}
+                  >
+                    <div className="truncate">{target}</div>
+                  </div>
+                ))}
+                {searchFilteredTargets.length > 10 && (
+                  <div className="px-3 py-2 text-xs text-gray-500 border-t">
+                    And {searchFilteredTargets.length - 10} more... (refine search)
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -179,7 +232,7 @@ export default function LossChart({ data }: LossChartProps) {
               ticks={yErrorTicks}
               tickFormatter={formatError}
               tickMargin={14}
-              label={{ value: 'Rel error (log)', angle: -90, position: 'insideLeft', textAnchor: 'start', dx: -19, fontSize: 12 }}
+              label={{ value: 'Rel error (log)', angle: -90, position: 'insideLeft', textAnchor: 'start', dx: -19, dy: 60, fontSize: 12 }}
               tick={{ fontSize: 10 }}
               />
               <Tooltip 

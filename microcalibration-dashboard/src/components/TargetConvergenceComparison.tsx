@@ -43,6 +43,8 @@ export default function TargetConvergenceComparison({
   const commonTargets = Array.from(firstTargets).filter(target => secondTargets.has(target)).sort();
 
   const [selectedTarget, setSelectedTarget] = useState<string>(commonTargets[0] || '');
+  const [targetSearchQuery, setTargetSearchQuery] = useState<string>('');
+  const [showTargetDropdown, setShowTargetDropdown] = useState<boolean>(false);
   const [lineOpacity, setLineOpacity] = useState({
     firstEstimate: 1,
     secondEstimate: 1
@@ -52,6 +54,7 @@ export default function TargetConvergenceComparison({
   const [selectedEpoch, setSelectedEpoch] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [currentPage, setCurrentPage] = useState<number>(0);
+  const [showTargetLabels, setShowTargetLabels] = useState<boolean>(false);
   const MAX_DISPLAYED_TARGETS = 15;
 
   // Initialize bar chart selections
@@ -124,6 +127,23 @@ export default function TargetConvergenceComparison({
 
     return convergenceData;
   };
+
+  // Filter targets based on search query for target selection dropdown
+  const searchFilteredTargets = commonTargets.filter(target =>
+    target.toLowerCase().includes(targetSearchQuery.toLowerCase())
+  ).sort((a, b) => {
+    // Sort by relevance: exact matches first, then starts with, then contains
+    const queryLower = targetSearchQuery.toLowerCase();
+    const aLower = a.toLowerCase();
+    const bLower = b.toLowerCase();
+    
+    if (aLower === queryLower) return -1;
+    if (bLower === queryLower) return 1;
+    if (aLower.startsWith(queryLower) && !bLower.startsWith(queryLower)) return -1;
+    if (bLower.startsWith(queryLower) && !aLower.startsWith(queryLower)) return 1;
+    
+    return a.localeCompare(b);
+  });
 
   const convergenceData = prepareConvergenceData(selectedTarget);
   const targetValue = convergenceData[0]?.target ?? 0;
@@ -313,35 +333,50 @@ export default function TargetConvergenceComparison({
             Select target:
           </label>
           <div className="relative flex-1 min-w-0">
-            <select
-              id="target-select"
-              value={selectedTarget}
-              onChange={(e) => setSelectedTarget(e.target.value)}
-              className="w-full border border-gray-300 rounded-md px-3 py-1 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 overflow-x-auto"
-              title={selectedTarget}
-              style={{
-                textOverflow: 'clip',
-                whiteSpace: 'nowrap',
-                scrollbarWidth: 'none',
-                msOverflowStyle: 'none',
-                WebkitOverflowScrolling: 'touch'
+            <input
+              type="text"
+              placeholder="Search targets..."
+              value={targetSearchQuery}
+              onChange={(e) => {
+                setTargetSearchQuery(e.target.value);
+                setShowTargetDropdown(true);
               }}
-            >
-              {commonTargets.map(target => (
-                <option key={target} value={target} title={target}>
-                  {target}
-                </option>
-              ))}
-            </select>
-            <style jsx>{`
-              #target-select::-webkit-scrollbar {
-                display: none;
-              }
-              #target-select {
-                scrollbar-width: none;
-                -ms-overflow-style: none;
-              }
-            `}</style>
+              onFocus={() => setShowTargetDropdown(true)}
+              onBlur={() => setTimeout(() => setShowTargetDropdown(false), 150)}
+              className="w-full border border-gray-300 rounded-md px-3 py-1 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+            {selectedTarget && (
+              <div className="mt-1 text-xs text-gray-600 truncate" title={selectedTarget}>
+                Selected: {selectedTarget}
+              </div>
+            )}
+            
+            {/* Dropdown */}
+            {showTargetDropdown && searchFilteredTargets.length > 0 && (
+              <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                {searchFilteredTargets.slice(0, 10).map(target => (
+                  <div
+                    key={target}
+                    onClick={() => {
+                      setSelectedTarget(target);
+                      setTargetSearchQuery('');
+                      setShowTargetDropdown(false);
+                    }}
+                    className={`px-3 py-2 text-sm cursor-pointer hover:bg-blue-50 ${
+                      target === selectedTarget ? 'bg-blue-100 text-blue-800' : 'text-gray-900'
+                    }`}
+                    title={target}
+                  >
+                    <div className="truncate">{target}</div>
+                  </div>
+                ))}
+                {searchFilteredTargets.length > 10 && (
+                  <div className="px-3 py-2 text-xs text-gray-500 border-t">
+                    And {searchFilteredTargets.length - 10} more... (refine search)
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -591,6 +626,19 @@ export default function TargetConvergenceComparison({
                 ))}
               </select>
             </div>
+
+            {/* Target Labels Toggle */}
+            <div className="flex items-center space-x-2">
+              <label className="flex items-center">
+                <input
+                  type="checkbox"
+                  checked={showTargetLabels}
+                  onChange={(e) => setShowTargetLabels(e.target.checked)}
+                  className="mr-2 rounded"
+                />
+                <span className="text-xs text-gray-700">Show target labels</span>
+              </label>
+            </div>
           </div>
         </div>
 
@@ -668,25 +716,30 @@ export default function TargetConvergenceComparison({
         {/* Bar Chart */}
         {barChartData.length > 0 && selectedEpoch !== null ? (
           <div className="h-96">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height={450}>
               <BarChart 
                 data={barChartData} 
-                margin={{ top: 10, right: 30, left: 20, bottom: 80 }}
+                margin={{ top: 10, right: 30, left: 20, bottom: showTargetLabels ? 120 : 60 }}
                 barGap={2}
               >
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis 
                   dataKey="targetName" 
-                  angle={-45}
-                  textAnchor="end"
-                  height={80}
-                  tick={{ fontSize: 10 }}
+                  angle={showTargetLabels ? -45 : 0}
+                  textAnchor={showTargetLabels ? "end" : "middle"}
+                  height={showTargetLabels ? 80 : 40}
                   interval={0}
+                  tick={showTargetLabels ? { fontSize: 10 } : false}
+                  label={{ 
+                    value: showTargetLabels ? '' : 'Target', 
+                    position: 'insideBottom', 
+                    fontSize: 12 
+                  }}
                 />
                 <YAxis
                   tickFormatter={formatValueCompact}
                   tick={{ fontSize: 10 }}
-                  label={{ value: 'Value', angle: -90, position: 'insideLeft', textAnchor: 'middle', fontSize: 12 }}
+                  label={{ value: 'Value', angle: -90, position: 'insideLeft', textAnchor: 'middle', fontSize: 12, dx: -10 }}
                 />
                 <Tooltip 
                   formatter={(value: number, name: string) => {
@@ -720,7 +773,7 @@ export default function TargetConvergenceComparison({
                                 borderColor: item.color
                               }}
                             />
-                            <span className="text-sm font-medium" style={{ color: item.color }}>
+                            <span className="font-medium" style={{ color: item.color,  fontSize: '11px'  }}>
                               {item.value}
                             </span>
                           </div>

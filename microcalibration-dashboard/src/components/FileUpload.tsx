@@ -474,7 +474,13 @@ export default function FileUpload({ onFileLoad, onViewDashboard, onCompareLoad 
       );
 
       if (!runsResponse.ok) {
-        throw new Error(`Failed to fetch workflow runs: ${runsResponse.status}`);
+        if (runsResponse.status === 403) {
+          throw new Error(`GitHub API rate limit exceeded or token permissions insufficient (403). Please try again later or check your token permissions.`);
+        } else if (runsResponse.status === 404) {
+          throw new Error(`Repository or commit not found (404). Please check the repository name and commit SHA.`);
+        } else {
+          throw new Error(`Failed to fetch workflow runs: ${runsResponse.status} ${runsResponse.statusText}`);
+        }
       }
 
       const runsData = await runsResponse.json();
@@ -624,8 +630,10 @@ export default function FileUpload({ onFileLoad, onViewDashboard, onCompareLoad 
       // Sample epochs to limit data size
       const samplingResult = sampleEpochs(csvContent);
 
-      // Success! Load the CSV into the dashboard
-      const baseDisplayName = `${csvFilename} (from ${artifact.name})`;
+      // Success! Load the CSV into the dashboard with commit info
+      const commitShort = selectedCommit.slice(0, 8);
+      const branchInfo = selectedBranch ? ` (${selectedBranch})` : '';
+      const baseDisplayName = `${csvFilename} @ ${commitShort}${branchInfo}`;
       const displayName = samplingResult.wasSampled 
         ? `${baseDisplayName} - sampled ${samplingResult.sampledEpochs}/${samplingResult.originalEpochs} epochs`
         : baseDisplayName;
@@ -708,7 +716,13 @@ export default function FileUpload({ onFileLoad, onViewDashboard, onCompareLoad 
       );
 
       if (!runsResponse.ok) {
-        throw new Error(`Failed to fetch workflow runs: ${runsResponse.status}`);
+        if (runsResponse.status === 403) {
+          throw new Error(`GitHub API rate limit exceeded or token permissions insufficient (403). Please try again later or check your token permissions.`);
+        } else if (runsResponse.status === 404) {
+          throw new Error(`Repository or commit not found (404). Please check the repository name and commit SHA.`);
+        } else {
+          throw new Error(`Failed to fetch workflow runs: ${runsResponse.status} ${runsResponse.statusText}`);
+        }
       }
 
       const runsData = await runsResponse.json();
@@ -835,10 +849,11 @@ export default function FileUpload({ onFileLoad, onViewDashboard, onCompareLoad 
         secondDownload.arrayBuffer()
       ]);
 
-      const zip = new JSZip();
+      const firstZip = new JSZip();
+      const secondZip = new JSZip();
       const [firstZipContent, secondZipContent] = await Promise.all([
-        zip.loadAsync(firstZipBuffer),
-        zip.loadAsync(secondZipBuffer)
+        firstZip.loadAsync(firstZipBuffer),
+        secondZip.loadAsync(secondZipBuffer)
       ]);
 
       // Find CSV files in both ZIPs
@@ -863,9 +878,15 @@ export default function FileUpload({ onFileLoad, onViewDashboard, onCompareLoad 
       const firstSampled = sampleEpochs(firstCsvContent);
       const secondSampled = sampleEpochs(secondCsvContent);
 
-      // Create display names
-      const firstName = `${firstCsvFiles[0]} (from ${firstArtifact.name})`;
-      const secondName = `${secondCsvFiles[0]} (from ${secondArtifact.name})`;
+      // Create display names with commit info
+      const firstCommitShort = selectedCommit.slice(0, 8);
+      const secondCommitShort = selectedSecondCommit.slice(0, 8);
+      
+      const firstBranchInfo = selectedBranch !== selectedSecondBranch ? ` (${selectedBranch})` : '';
+      const secondBranchInfo = selectedBranch !== selectedSecondBranch ? ` (${selectedSecondBranch})` : '';
+      
+      const firstName = `${firstCsvFiles[0]} @ ${firstCommitShort}${firstBranchInfo}`;
+      const secondName = `${secondCsvFiles[0]} @ ${secondCommitShort}${secondBranchInfo}`;
 
       // Load into comparison mode
       onCompareLoad(firstSampled.content, firstName, secondSampled.content, secondName);
@@ -1299,23 +1320,6 @@ export default function FileUpload({ onFileLoad, onViewDashboard, onCompareLoad 
                     <li>• ✅ Automatically finds calibration logs from CI/CD runs</li>
                     <li>• ✅ Full CSV extraction from ZIP artifacts</li>
                   </ul>
-                  
-                  {process.env.NODE_ENV === 'development' && (
-                    <button
-                      onClick={async () => {
-                        try {
-                          const response = await fetch('/api/test');
-                          const data = await response.json();
-                          alert(`API Test: ${JSON.stringify(data, null, 2)}`);
-                        } catch (err) {
-                          alert(`API Test Error: ${err}`);
-                        }
-                      }}
-                      className="mt-2 text-xs bg-gray-200 px-2 py-1 rounded"
-                    >
-                      Test API
-                    </button>
-                  )}
                 </div>
               </div>
             </div>
