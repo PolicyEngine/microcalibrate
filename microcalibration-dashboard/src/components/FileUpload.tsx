@@ -1,13 +1,18 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Upload, File as FileIcon, Link, Database, GitBranch } from 'lucide-react';
 import JSZip from 'jszip';
+import { DeeplinkParams, GitHubArtifactInfo } from '@/utils/deeplinks';
 
 interface FileUploadProps {
   onFileLoad: (content: string, filename: string) => void;
   onViewDashboard: () => void;
   onCompareLoad?: (content1: string, filename1: string, content2: string, filename2: string) => void;
+  deeplinkParams?: DeeplinkParams | null;
+  isLoadingFromDeeplink?: boolean;
+  onDeeplinkLoadComplete?: (primary: GitHubArtifactInfo | null, secondary?: GitHubArtifactInfo | null | undefined) => void;
+  onGithubLoad?: (primary: GitHubArtifactInfo | null, secondary?: GitHubArtifactInfo | null) => void;
 }
 
 interface GitHubCommit {
@@ -35,7 +40,15 @@ interface GitHubArtifact {
   created_at: string;
 }
 
-export default function FileUpload({ onFileLoad, onViewDashboard, onCompareLoad }: FileUploadProps) {
+export default function FileUpload({ 
+  onFileLoad, 
+  onViewDashboard, 
+  onCompareLoad,
+  deeplinkParams,
+  isLoadingFromDeeplink,
+  onDeeplinkLoadComplete,
+  onGithubLoad
+}: FileUploadProps) {
   const [isDragOver, setIsDragOver] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [urlInput, setUrlInput] = useState('');
@@ -60,6 +73,164 @@ export default function FileUpload({ onFileLoad, onViewDashboard, onCompareLoad 
   const [selectedSecondCommit, setSelectedSecondCommit] = useState('');
   const [secondArtifacts, setSecondArtifacts] = useState<GitHubArtifact[]>([]);
   const [selectedSecondArtifact, setSelectedSecondArtifact] = useState('');
+
+  // Helper function to load a single artifact from deeplink parameters
+  const loadArtifactFromDeeplink = useCallback(async (artifactInfo: GitHubArtifactInfo, githubToken: string): Promise<string> => {
+    // First, get the artifacts for the specific commit
+    const [owner, repo] = artifactInfo.repo.split('/');
+    const runsResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}/actions/runs?head_sha=${artifactInfo.commit}`, {
+      headers: {
+        'Authorization': `Bearer ${githubToken}`,
+        'Accept': 'application/vnd.github.v3+json',
+        'User-Agent': 'PolicyEngine-Dashboard/1.0'
+      }
+    });
+
+    if (!runsResponse.ok) {
+      throw new Error(`Failed to fetch workflow runs: ${runsResponse.status} ${runsResponse.statusText}`);
+    }
+
+    const runsData = await runsResponse.json();
+    const completedRuns = runsData.workflow_runs.filter((run: { status: string }) => run.status === 'completed');
+
+    if (completedRuns.length === 0) {
+      throw new Error('No completed workflow runs found for this commit');
+    }
+
+    // Find the artifact by name
+    let targetArtifact = null;
+    for (const run of completedRuns) {
+      const artifactsResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}/actions/runs/${run.id}/artifacts`, {
+        headers: {
+          'Authorization': `Bearer ${githubToken}`,
+          'Accept': 'application/vnd.github.v3+json',
+          'User-Agent': 'PolicyEngine-Dashboard/1.0'
+        }
+      });
+
+      if (artifactsResponse.ok) {
+        const artifactsData = await artifactsResponse.json();
+        targetArtifact = artifactsData.artifacts.find((artifact: { name: string }) => artifact.name === artifactInfo.artifact);
+        if (targetArtifact) break;
+      }
+    }
+
+    if (!targetArtifact) {
+      throw new Error(`Artifact "${artifactInfo.artifact}" not found for commit ${artifactInfo.commit}`);
+    }
+
+    // Download and extract the artifact
+    const downloadResponse = await fetch(targetArtifact.archive_download_url, {
+      headers: {
+        'Authorization': `Bearer ${githubToken}`,
+        'Accept': 'application/vnd.github.v3+json',
+        'User-Agent': 'PolicyEngine-Dashboard/1.0'
+      }
+    });
+
+    if (!downloadResponse.ok) {
+      throw new Error(`Failed to download artifact: ${downloadResponse.status} ${downloadResponse.statusText}`);
+    }
+
+    const zipBuffer = await downloadResponse.arrayBuffer();
+    const zip = new JSZip();
+    const zipContents = await zip.loadAsync(zipBuffer);
+    
+    // Find CSV files in the zip
+    const csvFiles = Object.keys(zipContents.files).filter(filename => filename.endsWith('.csv'));
+    
+    if (csvFiles.length === 0) {
+      throw new Error('No CSV files found in the artifact');
+    }
+
+    // Use the first CSV file found
+    const csvFile = zipContents.files[csvFiles[0]];
+    const csvContent = await csvFile.async('text');
+
+    // Apply epoch sampling
+    const samplingResult = sampleEpochs(csvContent);
+    return samplingResult.content;
+  }, []);
+
+  // Load GitHub artifacts directly from deeplink parameters
+  const loadDeeplinkArtifacts = useCallback(async (primary: GitHubArtifactInfo, secondary?: GitHubArtifactInfo) => {
+    const githubToken = process.env.NEXT_PUBLIC_GITHUB_TOKEN;
+    if (!githubToken) {
+      setError('GitHub token not configured. Please set NEXT_PUBLIC_GITHUB_TOKEN environment variable.');
+      return;
+    }
+
+    setIsLoading(true);
+    setError('');
+
+    try {
+      setError('🔄 Loading data from GitHub artifacts...');
+
+      // Load primary artifact
+      const primaryData = await loadArtifactFromDeeplink(primary, githubToken);
+      
+      if (secondary && onCompareLoad) {
+        // Load secondary artifact for comparison
+        const secondaryData = await loadArtifactFromDeeplink(secondary, githubToken);
+        
+        // Generate display names with commit info
+        const primaryDisplayName = `${primary.repo}@${primary.branch} (${primary.commit.substring(0, 7)}) - ${primary.artifact}`;
+        const secondaryDisplayName = `${secondary.repo}@${secondary.branch} (${secondary.commit.substring(0, 7)}) - ${secondary.artifact}`;
+        
+        onCompareLoad(primaryData, primaryDisplayName, secondaryData, secondaryDisplayName);
+        setLoadedFile(`Comparison: ${primaryDisplayName} vs ${secondaryDisplayName}`);
+      } else {
+        // Single artifact load
+        const displayName = `${primary.repo}@${primary.branch} (${primary.commit.substring(0, 7)}) - ${primary.artifact}`;
+        onFileLoad(primaryData, displayName);
+        setLoadedFile(displayName);
+      }
+
+      // Notify parent component that deeplink loading is complete
+      if (onDeeplinkLoadComplete) {
+        onDeeplinkLoadComplete(primary, secondary);
+      }
+
+      setError('');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load artifacts from deeplink');
+      if (onDeeplinkLoadComplete) {
+        onDeeplinkLoadComplete(null);
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  }, [onFileLoad, onCompareLoad, onDeeplinkLoadComplete, loadArtifactFromDeeplink]);
+
+  // Handle deeplink loading on mount
+  useEffect(() => {
+    if (deeplinkParams && isLoadingFromDeeplink) {
+      setActiveTab('github');
+      
+      if (deeplinkParams.mode === 'comparison' && deeplinkParams.primary && deeplinkParams.secondary) {
+        setComparisonMode(true);
+        setGithubRepo(deeplinkParams.primary.repo);
+        setSelectedBranch(deeplinkParams.primary.branch);
+        setSelectedCommit(deeplinkParams.primary.commit);
+        setSelectedArtifact(deeplinkParams.primary.artifact);
+        setSelectedSecondBranch(deeplinkParams.secondary.branch);
+        setSelectedSecondCommit(deeplinkParams.secondary.commit);
+        setSelectedSecondArtifact(deeplinkParams.secondary.artifact);
+        
+        // Auto-load comparison data
+        loadDeeplinkArtifacts(deeplinkParams.primary, deeplinkParams.secondary);
+      } else if (deeplinkParams.primary) {
+        setComparisonMode(false);
+        setGithubRepo(deeplinkParams.primary.repo);
+        setSelectedBranch(deeplinkParams.primary.branch);
+        setSelectedCommit(deeplinkParams.primary.commit);
+        setSelectedArtifact(deeplinkParams.primary.artifact);
+        
+        // Auto-load single artifact data
+        loadDeeplinkArtifacts(deeplinkParams.primary);
+      }
+    }
+  }, [deeplinkParams, isLoadingFromDeeplink, loadDeeplinkArtifacts]);
 
   function sampleEpochs(csvContent: string, maxEpochs = 20): { content: string; wasSampled: boolean; originalEpochs: number; sampledEpochs: number } {
     const lines = csvContent.trim().split('\n');
@@ -642,6 +813,17 @@ export default function FileUpload({ onFileLoad, onViewDashboard, onCompareLoad 
       setLoadedFile(displayName);
       setError('');
       
+      // Notify parent component about GitHub artifact info for sharing
+      if (onGithubLoad) {
+        const artifactInfo: GitHubArtifactInfo = {
+          repo: githubRepo,
+          branch: selectedBranch,
+          commit: selectedCommit,
+          artifact: artifact.name
+        };
+        onGithubLoad(artifactInfo, null);
+      }
+      
       // Clear the GitHub state since we successfully loaded the file
       setGithubRepo('');
       setGithubBranches([]);
@@ -890,6 +1072,24 @@ export default function FileUpload({ onFileLoad, onViewDashboard, onCompareLoad 
 
       // Load into comparison mode
       onCompareLoad(firstSampled.content, firstName, secondSampled.content, secondName);
+      
+      // Notify parent component about GitHub artifact info for sharing
+      if (onGithubLoad) {
+        const primaryArtifactInfo: GitHubArtifactInfo = {
+          repo: githubRepo,
+          branch: selectedBranch,
+          commit: selectedCommit,
+          artifact: firstArtifact.name
+        };
+        const secondaryArtifactInfo: GitHubArtifactInfo = {
+          repo: githubRepo,
+          branch: selectedSecondBranch,
+          commit: selectedSecondCommit,
+          artifact: secondArtifact.name
+        };
+        onGithubLoad(primaryArtifactInfo, secondaryArtifactInfo);
+      }
+      
       setError('');
 
     } catch (extractError) {
