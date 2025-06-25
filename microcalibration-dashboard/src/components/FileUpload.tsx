@@ -909,7 +909,7 @@ export default function FileUpload({ onFileLoad, onViewDashboard, onCompareLoad 
           }`}
         >
           <Upload className="w-4 h-4 inline mr-2" />
-          Drop File
+          Drop file
         </button>
         <button
           onClick={() => setActiveTab('url')}
@@ -1025,7 +1025,7 @@ export default function FileUpload({ onFileLoad, onViewDashboard, onCompareLoad 
                   disabled={isLoading}
                   className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {isLoading ? 'Loading Sample...' : 'Load Sample Data'}
+                  {isLoading ? 'Loading Sample...' : 'Load sample data'}
                 </button>
               </div>
             </div>
@@ -1285,8 +1285,8 @@ export default function FileUpload({ onFileLoad, onViewDashboard, onCompareLoad 
                     className="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-md disabled:opacity-50"
                   >
                     {isLoading 
-                      ? (comparisonMode ? 'Loading Comparison...' : 'Loading Artifact...') 
-                      : (comparisonMode ? 'Compare Calibration Runs' : 'Load Calibration Data')
+                      ? (comparisonMode ? 'Loading comparison...' : 'Loading artifact...') 
+                      : (comparisonMode ? 'Compare calibration runs' : 'Load calibration data')
                     }
                   </button>
                 )}
@@ -1330,7 +1330,7 @@ export default function FileUpload({ onFileLoad, onViewDashboard, onCompareLoad 
             onClick={onViewDashboard}
             className="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-3 px-4 rounded-md transition-colors"
           >
-            View Dashboard
+            View dashboard
           </button>
         </div>
       )}

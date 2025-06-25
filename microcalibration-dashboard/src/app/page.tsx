@@ -6,6 +6,9 @@ import MetricsOverview from '@/components/MetricsOverview';
 import LossChart from '@/components/LossChart';
 import ErrorDistribution from '@/components/ErrorDistribution';
 import CalibrationSummary from '@/components/CalibrationSummary';
+import ComparisonSummary from '@/components/ComparisonSummary';
+import RegressionAnalysis from '@/components/RegressionAnalysis';
+import TargetConvergenceComparison from '@/components/TargetConvergenceComparison';
 import DataTable from '@/components/DataTable';
 import { CalibrationDataPoint } from '@/types/calibration';
 import { parseCalibrationCSV } from '@/utils/csvParser';
@@ -143,37 +146,24 @@ export default function Dashboard() {
                 {comparisonMode ? (
                   // Comparison Mode Dashboard
                   <>
-                    <div className="bg-white border border-gray-300 p-6 rounded-lg shadow-sm">
-                      <h2 className="text-xl font-bold text-gray-800 mb-4">📊 Calibration Comparison</h2>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                          <h3 className="text-lg font-semibold text-blue-600 mb-2">First Run</h3>
-                          <p className="text-sm text-gray-600">{filename}</p>
-                          <p className="text-sm text-gray-500">{data.length} data points</p>
-                        </div>
-                        <div>
-                          <h3 className="text-lg font-semibold text-green-600 mb-2">Second Run</h3>
-                          <p className="text-sm text-gray-600">{secondFilename}</p>
-                          <p className="text-sm text-gray-500">{secondData.length} data points</p>
-                        </div>
-                      </div>
-                      <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded">
-                        <p className="text-yellow-800 text-sm">
-                          🚧 <strong>Comparison dashboard coming soon!</strong> This will show side-by-side analysis of 
-                          calibration performance, target improvements/regressions, and statistical comparisons between runs.
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* For now, show first dataset in regular dashboard */}
-                    <div className="opacity-75">
-                      <h3 className="text-lg font-semibold text-gray-600 mb-4">Preview: First Dataset ({filename})</h3>
-                      <MetricsOverview data={data} />
-                      <ErrorDistribution data={data} />
-                      <CalibrationSummary data={data} />
-                      <LossChart data={data} />
-                      <DataTable data={data} />
-                    </div>
+                    <ComparisonSummary 
+                      firstData={data} 
+                      secondData={secondData} 
+                      firstName={filename} 
+                      secondName={secondFilename} 
+                    />
+                    <RegressionAnalysis 
+                      firstData={data} 
+                      secondData={secondData} 
+                      firstName={filename} 
+                      secondName={secondFilename} 
+                    />
+                    <TargetConvergenceComparison 
+                      firstData={data} 
+                      secondData={secondData} 
+                      firstName={filename} 
+                      secondName={secondFilename} 
+                    />
                   </>
                 ) : (
                   // Regular Single Dataset Dashboard
