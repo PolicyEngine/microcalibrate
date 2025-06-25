@@ -158,7 +158,8 @@ def reweight(
 
     if csv_path:
         # Create directory if it doesn't exist
-        csv_path = Path(csv_path).exists()
+        csv_path = Path(csv_path)
+        csv_path.parent.mkdir(parents=True, exist_ok=True)
         performance_df.to_csv(csv_path, index=True)
 
     logger.info(f"Reweighting completed. Final sample size: {len(weights)}")
