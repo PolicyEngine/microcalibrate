@@ -1,7 +1,9 @@
 'use client';
 
+import { useState } from 'react';
 import { CalibrationDataPoint } from '@/types/calibration';
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
 interface CalibrationSummaryProps {
   data: CalibrationDataPoint[];
@@ -16,6 +18,11 @@ interface TargetSummary {
 }
 
 export default function CalibrationSummary({ data }: CalibrationSummaryProps) {
+  const [visibleLines, setVisibleLines] = useState({
+    totalLoss: true,
+    avgRelAbsError: true
+  });
+
   if (data.length === 0) {
     return null;
   }
@@ -92,6 +99,78 @@ export default function CalibrationSummary({ data }: CalibrationSummaryProps) {
   const minimalExamples = targetSummaries
     .filter(t => t.category === 'minimal_change')
     .slice(0, 3);
+
+  // Prepare chart data: aggregate total loss and total relative absolute error by epoch
+  const chartData = data.reduce((acc, point) => {
+    const existingEpoch = acc.find(item => item.epoch === point.epoch);
+    if (existingEpoch) {
+      existingEpoch.totalLoss += point.loss;
+      if (point.rel_abs_error !== undefined && !isNaN(point.rel_abs_error)) {
+        existingEpoch.totalRelAbsError += point.rel_abs_error;
+        existingEpoch.validErrorCount += 1;
+      }
+    } else {
+      acc.push({
+        epoch: point.epoch,
+        totalLoss: point.loss,
+        totalRelAbsError: point.rel_abs_error !== undefined && !isNaN(point.rel_abs_error) ? point.rel_abs_error : 0,
+        validErrorCount: point.rel_abs_error !== undefined && !isNaN(point.rel_abs_error) ? 1 : 0
+      });
+    }
+    return acc;
+  }, [] as Array<{ epoch: number; totalLoss: number; totalRelAbsError: number; validErrorCount: number }>)
+  .map(item => ({
+    epoch: item.epoch,
+    totalLoss: item.totalLoss,
+    avgRelAbsError: item.validErrorCount > 0 ? item.totalRelAbsError / item.validErrorCount : 0
+  }))
+  .sort((a, b) => a.epoch - b.epoch);
+
+  const formatLoss = (value: number) => {
+    if (value >= 1000000) {
+      return (value / 1000000).toFixed(2) + 'M';
+    } else if (value >= 1000) {
+      return (value / 1000).toFixed(2) + 'K';
+    }
+    return value.toFixed(2);
+  };
+
+  const formatError = (value: number) => {
+    return (value * 100).toFixed(2) + '%';
+  };
+
+  const handleLegendClick = (dataKey: string) => {
+    setVisibleLines(prev => ({
+      ...prev,
+      [dataKey]: !prev[dataKey as keyof typeof prev]
+    }));
+  };
+
+  const CustomLegend = (props: { payload?: Array<{ dataKey: string; color: string; value: string }> }) => {
+    const { payload } = props;
+    return (
+      <div className="flex justify-center items-center space-x-6 pt-4">
+        {payload?.map((entry, index: number) => {
+          const isVisible = visibleLines[entry.dataKey as keyof typeof visibleLines];
+          return (
+            <div
+              key={`legend-${index}`}
+              className={`flex items-center cursor-pointer ${
+                isVisible ? 'opacity-100' : 'opacity-50'
+              }`}
+              onClick={() => handleLegendClick(entry.dataKey)}
+            >
+              <div
+                className="w-3 h-0.5 mr-2"
+                style={{ backgroundColor: isVisible ? entry.color : '#ccc' }}
+              />
+              <span className="text-sm text-gray-700">{entry.value}</span>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
 
   return (
     <div className="bg-white border border-gray-300 p-6 rounded-lg shadow-sm">
@@ -225,6 +304,73 @@ export default function CalibrationSummary({ data }: CalibrationSummaryProps) {
           </div>
         )}
       </div>
+
+      {/* Total Loss and Error Chart */}
+      {chartData.length > 0 && (
+        <div className="mt-8 border-t pt-6">
+          <h3 className="text-lg font-semibold text-gray-800 mb-4">Total loss and average relative error over epochs</h3>
+          <div className="h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis 
+                  dataKey="epoch" 
+                  label={{ value: 'Epoch', position: 'insideBottom', offset: -10, fontSize: 12 }}
+                  tick={{ fontSize: 10 }}
+                />
+                <YAxis
+                  yAxisId="loss"
+                  orientation="left"
+                  tickFormatter={formatLoss}
+                  label={{ value: 'Total loss', angle: -90, position: 'insideLeft', textAnchor: 'middle', fontSize: 12, dy: 25 }}
+                  tick={{ fontSize: 10 }}
+                />
+                <YAxis
+                  yAxisId="error"
+                  orientation="right"
+                  tickFormatter={formatError}
+                  label={{ value: 'Avg rel error (%)', angle: 90, position: 'insideRight', textAnchor: 'middle', fontSize: 12, dy: 75 }}
+                  tick={{ fontSize: 10 }}
+                />
+                <Tooltip 
+                  formatter={(value: number, name: string) => {
+                    if (name === 'totalLoss') {
+                      return [formatLoss(value), 'Total loss'];
+                    } else if (name === 'avgRelAbsError') {
+                      return [formatError(value), 'Avg rel error'];
+                    }
+                    return [value, name];
+                  }}
+                  labelFormatter={(label) => `Epoch: ${label}`}
+                />
+                <Legend content={<CustomLegend />} />
+                <Line 
+                  yAxisId="loss"
+                  type="monotone" 
+                  dataKey="totalLoss" 
+                  stroke={visibleLines.totalLoss ? "#dc2626" : "transparent"}
+                  strokeWidth={2}
+                  dot={visibleLines.totalLoss ? { r: 3 } : false}
+                  activeDot={visibleLines.totalLoss ? { r: 5 } : false}
+                  name="Total loss"
+                  hide={!visibleLines.totalLoss}
+                />
+                <Line 
+                  yAxisId="error"
+                  type="monotone" 
+                  dataKey="avgRelAbsError" 
+                  stroke={visibleLines.avgRelAbsError ? "#7c3aed" : "transparent"}
+                  strokeWidth={2}
+                  dot={visibleLines.avgRelAbsError ? { r: 3 } : false}
+                  activeDot={visibleLines.avgRelAbsError ? { r: 5 } : false}
+                  name="Avg rel error"
+                  hide={!visibleLines.avgRelAbsError}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

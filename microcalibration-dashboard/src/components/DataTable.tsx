@@ -2,6 +2,7 @@
 
 import { CalibrationDataPoint } from '@/types/calibration';
 import { useState, useMemo } from 'react';
+import { compareTargetNames } from '@/utils/targetOrdering';
 
 interface DataTableProps {
   data: CalibrationDataPoint[];
@@ -14,8 +15,8 @@ export default function DataTable({ data }: DataTableProps) {
   // Get unique epochs
   const allEpochs = Array.from(new Set(data.map(item => item.epoch))).sort((a, b) => a - b);
   
-  const [sortField, setSortField] = useState<keyof CalibrationDataPoint | 'random'>('random');
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const [sortField, setSortField] = useState<keyof CalibrationDataPoint | 'random'>('target_name');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [filter, setFilter] = useState('');
   const [epochFilter, setEpochFilter] = useState(maxEpoch);
   const [currentPage, setCurrentPage] = useState(1);
@@ -43,6 +44,12 @@ export default function DataTable({ data }: DataTableProps) {
       
       if (typeof aVal === 'number' && typeof bVal === 'number') {
         return sortDirection === 'asc' ? aVal - bVal : bVal - aVal;
+      }
+      
+      // Use hierarchical target ordering for target_name field
+      if (sortField === 'target_name') {
+        const result = compareTargetNames(String(aVal), String(bVal));
+        return sortDirection === 'asc' ? result : -result;
       }
       
       const aStr = String(aVal).toLowerCase();

@@ -6,7 +6,9 @@ import MetricsOverview from '@/components/MetricsOverview';
 import LossChart from '@/components/LossChart';
 import ErrorDistribution from '@/components/ErrorDistribution';
 import CalibrationSummary from '@/components/CalibrationSummary';
+import SingleDatasetBarChart from '@/components/SingleDatasetBarChart';
 import ComparisonSummary from '@/components/ComparisonSummary';
+import ComparisonCharts from '@/components/ComparisonCharts';
 import ComparisonQualitySummary from '@/components/ComparisonQualitySummary';
 import RegressionAnalysis from '@/components/RegressionAnalysis';
 import TargetConvergenceComparison from '@/components/TargetConvergenceComparison';
@@ -219,6 +221,12 @@ export default function Dashboard() {
                       firstName={filename} 
                       secondName={secondFilename} 
                     />
+                    <ComparisonCharts 
+                      firstData={data} 
+                      secondData={secondData} 
+                      firstName={filename} 
+                      secondName={secondFilename} 
+                    />
                     <RegressionAnalysis 
                       firstData={data} 
                       secondData={secondData} 
@@ -239,6 +247,7 @@ export default function Dashboard() {
                     <ErrorDistribution data={data} />
                     <CalibrationSummary data={data} />
                     <LossChart data={data} />
+                    <SingleDatasetBarChart data={data} />
                     <DataTable data={data} />
                   </>
                 )}
