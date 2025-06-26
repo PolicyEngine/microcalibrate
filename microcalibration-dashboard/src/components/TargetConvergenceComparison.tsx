@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, ReferenceLine, BarChart, Bar } from 'recharts';
 import { CalibrationDataPoint } from '@/types/calibration';
 import { Target } from 'lucide-react';
+import { sortTargetNames, sortTargetsWithRelevance } from '@/utils/targetOrdering';
 
 interface TargetConvergenceComparisonProps {
   firstData: CalibrationDataPoint[];
@@ -40,7 +41,7 @@ export default function TargetConvergenceComparison({
   // Find overlapping targets
   const firstTargets = new Set(firstData.map(d => d.target_name));
   const secondTargets = new Set(secondData.map(d => d.target_name));
-  const commonTargets = Array.from(firstTargets).filter(target => secondTargets.has(target)).sort();
+  const commonTargets = sortTargetNames(Array.from(firstTargets).filter(target => secondTargets.has(target)));
 
   const [selectedTarget, setSelectedTarget] = useState<string>(commonTargets[0] || '');
   const [targetSearchQuery, setTargetSearchQuery] = useState<string>('');
@@ -129,21 +130,12 @@ export default function TargetConvergenceComparison({
   };
 
   // Filter targets based on search query for target selection dropdown
-  const searchFilteredTargets = commonTargets.filter(target =>
-    target.toLowerCase().includes(targetSearchQuery.toLowerCase())
-  ).sort((a, b) => {
-    // Sort by relevance: exact matches first, then starts with, then contains
-    const queryLower = targetSearchQuery.toLowerCase();
-    const aLower = a.toLowerCase();
-    const bLower = b.toLowerCase();
-    
-    if (aLower === queryLower) return -1;
-    if (bLower === queryLower) return 1;
-    if (aLower.startsWith(queryLower) && !bLower.startsWith(queryLower)) return -1;
-    if (bLower.startsWith(queryLower) && !aLower.startsWith(queryLower)) return 1;
-    
-    return a.localeCompare(b);
-  });
+  const searchFilteredTargets = sortTargetsWithRelevance(
+    commonTargets.filter(target =>
+      target.toLowerCase().includes(targetSearchQuery.toLowerCase())
+    ),
+    targetSearchQuery
+  );
 
   const convergenceData = prepareConvergenceData(selectedTarget);
   const targetValue = convergenceData[0]?.target ?? 0;
@@ -153,7 +145,7 @@ export default function TargetConvergenceComparison({
     const filtered = commonTargets.filter(target => 
       target.toLowerCase().includes(searchQuery.toLowerCase())
     );
-    return filtered;
+    return sortTargetsWithRelevance(filtered, searchQuery);
   };
 
   const filteredTargets = getFilteredTargets();

@@ -2,6 +2,7 @@
 
 import { CalibrationDataPoint } from '@/types/calibration';
 import { useState, useMemo } from 'react';
+import { compareTargetNames } from '@/utils/targetOrdering';
 
 interface DataTableProps {
   data: CalibrationDataPoint[];
@@ -43,6 +44,12 @@ export default function DataTable({ data }: DataTableProps) {
       
       if (typeof aVal === 'number' && typeof bVal === 'number') {
         return sortDirection === 'asc' ? aVal - bVal : bVal - aVal;
+      }
+      
+      // Use hierarchical target ordering for target_name field
+      if (sortField === 'target_name') {
+        const result = compareTargetNames(String(aVal), String(bVal));
+        return sortDirection === 'asc' ? result : -result;
       }
       
       const aStr = String(aVal).toLowerCase();

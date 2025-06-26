@@ -3,33 +3,25 @@
 import { useState } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { CalibrationDataPoint } from '@/types/calibration';
+import { getSortedUniqueTargets, sortTargetsWithRelevance } from '@/utils/targetOrdering';
 
 interface LossChartProps {
   data: CalibrationDataPoint[];
 }
 
 export default function LossChart({ data }: LossChartProps) {
-  const targetNames = [...new Set(data.map(d => d.target_name))];
+  const targetNames = getSortedUniqueTargets(data);
   const [selectedTarget, setSelectedTarget] = useState<string>(targetNames[0] || '');
   const [targetSearchQuery, setTargetSearchQuery] = useState<string>('');
   const [showTargetDropdown, setShowTargetDropdown] = useState<boolean>(false);
 
   // Filter targets based on search query
-  const searchFilteredTargets = targetNames.filter(target =>
-    target.toLowerCase().includes(targetSearchQuery.toLowerCase())
-  ).sort((a, b) => {
-    // Sort by relevance: exact matches first, then starts with, then contains
-    const queryLower = targetSearchQuery.toLowerCase();
-    const aLower = a.toLowerCase();
-    const bLower = b.toLowerCase();
-    
-    if (aLower === queryLower) return -1;
-    if (bLower === queryLower) return 1;
-    if (aLower.startsWith(queryLower) && !bLower.startsWith(queryLower)) return -1;
-    if (bLower.startsWith(queryLower) && !aLower.startsWith(queryLower)) return 1;
-    
-    return a.localeCompare(b);
-  });
+  const searchFilteredTargets = sortTargetsWithRelevance(
+    targetNames.filter(target =>
+      target.toLowerCase().includes(targetSearchQuery.toLowerCase())
+    ),
+    targetSearchQuery
+  );
 
   if (targetNames.length === 0) {
     return (

@@ -1,6 +1,7 @@
 'use client';
 
 import { CalibrationDataPoint } from '@/types/calibration';
+import { getSortedUniqueTargets } from '@/utils/targetOrdering';
 
 interface ErrorDistributionProps {
   data: CalibrationDataPoint[];
@@ -42,7 +43,7 @@ export default function ErrorDistribution({ data }: ErrorDistributionProps) {
 
   const distribution = getErrorDistribution();
   const maxCount = Math.max(...distribution.map(d => d.count));
-  const targetNames = Array.from(new Set(latestData.map(item => item.target_name)));
+  const targetNames = getSortedUniqueTargets(latestData);
 
   return (
     <div className="bg-white border border-gray-300 p-6 rounded-lg shadow-sm">
