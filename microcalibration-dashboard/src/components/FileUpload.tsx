@@ -1237,7 +1237,6 @@ export default function FileUpload({
                   Try the dashboard with sample calibration data showing income targets by age group over 500+ epochs.
                 </p>
                 <ul className="text-sm text-blue-600 mb-4 space-y-1">
-                  <li>• Contains 100+ data points with loss convergence</li>
                   <li>• Shows calibration for income_aged_20_30 and income_aged_40_50 targets</li>
                   <li>• Demonstrates error reduction over training epochs</li>
                 </ul>
