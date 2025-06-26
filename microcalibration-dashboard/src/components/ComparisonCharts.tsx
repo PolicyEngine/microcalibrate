@@ -192,14 +192,15 @@ export default function ComparisonCharts({ firstData, secondData, firstName, sec
                   tick={{ fontSize: 10 }}
                 />
                 <Tooltip 
-                  formatter={(value: number | null, name: string) => {
-                    if (value === null) return ['N/A', name];
+                  formatter={(value: any, name: string) => {
+                    if (value === null || value === undefined) return ['N/A', name];
+                    const numValue = Number(value);
                     if (name === 'firstTotalLoss') {
-                      return [formatLoss(value), firstName];
+                      return [formatLoss(numValue), firstName];
                     } else if (name === 'secondTotalLoss') {
-                      return [formatLoss(value), secondName];
+                      return [formatLoss(numValue), secondName];
                     }
-                    return [value, name];
+                    return [formatLoss(numValue), name];
                   }}
                   labelFormatter={(label) => `Epoch: ${label}`}
                 />
@@ -251,14 +252,15 @@ export default function ComparisonCharts({ firstData, secondData, firstName, sec
                   tick={{ fontSize: 10 }}
                 />
                 <Tooltip 
-                  formatter={(value: number | null, name: string) => {
-                    if (value === null) return ['N/A', name];
+                  formatter={(value: any, name: string) => {
+                    if (value === null || value === undefined) return ['N/A', name];
+                    const numValue = Number(value);
                     if (name === 'firstAvgError') {
-                      return [formatError(value), firstName];
+                      return [formatError(numValue), firstName];
                     } else if (name === 'secondAvgError') {
-                      return [formatError(value), secondName];
+                      return [formatError(numValue), secondName];
                     }
-                    return [value, name];
+                    return [formatError(numValue), name];
                   }}
                   labelFormatter={(label) => `Epoch: ${label}`}
                 />
