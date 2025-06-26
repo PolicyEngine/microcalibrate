@@ -45,6 +45,15 @@ export default function ErrorDistribution({ data }: ErrorDistributionProps) {
   const maxCount = Math.max(...distribution.map(d => d.count));
   const targetNames = getSortedUniqueTargets(latestData);
 
+  // Get top performing targets (lowest error)
+  const topTargets = targetNames.map(targetName => {
+    const targetData = latestData.filter(d => d.target_name === targetName);
+    const avgError = targetData.reduce((sum, d) => sum + d.rel_abs_error, 0) / targetData.length;
+    return { targetName, avgError };
+  })
+  .sort((a, b) => a.avgError - b.avgError) // Sort by error ascending (best first)
+  .slice(0, 5);
+
   return (
     <div className="bg-white border border-gray-300 p-6 rounded-lg shadow-sm">
       <h2 className="text-xl font-bold mb-2 text-gray-800">Error distribution</h2>
@@ -93,20 +102,14 @@ export default function ErrorDistribution({ data }: ErrorDistributionProps) {
         <div>
           <h3 className="text-sm font-semibold text-gray-700 mb-3">Top calibration targets</h3>
           <div className="font-mono space-y-1 text-sm">
-            {targetNames.slice(0, 5).map(targetName => {
-              const count = latestData.filter(d => d.target_name === targetName).length;
-              const avgError = latestData
-                .filter(d => d.target_name === targetName)
-                .reduce((sum, d) => sum + d.rel_abs_error, 0) / count;
-              return (
-                <div key={targetName} className="flex justify-between text-gray-600">
-                  <span className="truncate" title={targetName}>
-                    {targetName.length > 20 ? targetName.substring(0, 20) + '...' : targetName}
-                  </span>
-                  <span>{avgError.toFixed(3)}</span>
-                </div>
-              );
-            })}
+            {topTargets.map(({ targetName, avgError }) => (
+              <div key={targetName} className="flex justify-between text-gray-600">
+                <span className="truncate" title={targetName}>
+                  {targetName.length > 20 ? targetName.substring(0, 20) + '...' : targetName}
+                </span>
+                <span>{avgError.toFixed(3)}</span>
+              </div>
+            ))}
             {targetNames.length > 5 && (
               <div className="text-xs text-gray-500 italic">
                 +{targetNames.length - 5} more targets
