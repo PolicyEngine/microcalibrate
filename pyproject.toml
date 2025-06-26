@@ -1,6 +1,6 @@
 [project]
 name = "microcalibrate"
-version = "0.13.1"
+version = "0.13.2"
 description = "Calibrating microdata"
 readme = "README.md"
 authors = [
