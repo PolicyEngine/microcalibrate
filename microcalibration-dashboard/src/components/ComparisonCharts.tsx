@@ -107,11 +107,11 @@ export default function ComparisonCharts({ firstData, secondData, firstName, sec
     }));
   };
 
-  const LossCustomLegend = (props: any) => {
+  const LossCustomLegend = (props: { payload?: Array<{ dataKey: string; color: string; value: string }> }) => {
     const { payload } = props;
     return (
       <div className="flex justify-center items-center space-x-6 pt-4">
-        {payload.map((entry: any, index: number) => {
+        {payload?.map((entry, index: number) => {
           const isVisible = visibleLossLines[entry.dataKey.replace('TotalLoss', '') as keyof typeof visibleLossLines];
           return (
             <div
@@ -133,11 +133,11 @@ export default function ComparisonCharts({ firstData, secondData, firstName, sec
     );
   };
 
-  const ErrorCustomLegend = (props: any) => {
+  const ErrorCustomLegend = (props: { payload?: Array<{ dataKey: string; color: string; value: string }> }) => {
     const { payload } = props;
     return (
       <div className="flex justify-center items-center space-x-6 pt-4">
-        {payload.map((entry: any, index: number) => {
+        {payload?.map((entry, index: number) => {
           const isVisible = visibleErrorLines[entry.dataKey.replace('AvgError', '') as keyof typeof visibleErrorLines];
           return (
             <div
@@ -192,7 +192,7 @@ export default function ComparisonCharts({ firstData, secondData, firstName, sec
                   tick={{ fontSize: 10 }}
                 />
                 <Tooltip 
-                  formatter={(value: any, name: string) => {
+                  formatter={(value: string | number | (string | number)[], name: string) => {
                     if (value === null || value === undefined) return ['N/A', name];
                     const numValue = Number(value);
                     if (name === 'firstTotalLoss') {
@@ -252,7 +252,7 @@ export default function ComparisonCharts({ firstData, secondData, firstName, sec
                   tick={{ fontSize: 10 }}
                 />
                 <Tooltip 
-                  formatter={(value: any, name: string) => {
+                  formatter={(value: string | number | (string | number)[], name: string) => {
                     if (value === null || value === undefined) return ['N/A', name];
                     const numValue = Number(value);
                     if (name === 'firstAvgError') {

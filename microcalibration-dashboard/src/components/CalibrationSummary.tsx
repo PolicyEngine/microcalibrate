@@ -146,11 +146,11 @@ export default function CalibrationSummary({ data }: CalibrationSummaryProps) {
     }));
   };
 
-  const CustomLegend = (props: any) => {
+  const CustomLegend = (props: { payload?: Array<{ dataKey: string; color: string; value: string }> }) => {
     const { payload } = props;
     return (
       <div className="flex justify-center items-center space-x-6 pt-4">
-        {payload.map((entry: any, index: number) => {
+        {payload?.map((entry, index: number) => {
           const isVisible = visibleLines[entry.dataKey as keyof typeof visibleLines];
           return (
             <div
