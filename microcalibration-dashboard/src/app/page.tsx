@@ -6,6 +6,7 @@ import MetricsOverview from '@/components/MetricsOverview';
 import LossChart from '@/components/LossChart';
 import ErrorDistribution from '@/components/ErrorDistribution';
 import CalibrationSummary from '@/components/CalibrationSummary';
+import SingleDatasetBarChart from '@/components/SingleDatasetBarChart';
 import ComparisonSummary from '@/components/ComparisonSummary';
 import ComparisonCharts from '@/components/ComparisonCharts';
 import ComparisonQualitySummary from '@/components/ComparisonQualitySummary';
@@ -246,6 +247,7 @@ export default function Dashboard() {
                     <ErrorDistribution data={data} />
                     <CalibrationSummary data={data} />
                     <LossChart data={data} />
+                    <SingleDatasetBarChart data={data} />
                     <DataTable data={data} />
                   </>
                 )}

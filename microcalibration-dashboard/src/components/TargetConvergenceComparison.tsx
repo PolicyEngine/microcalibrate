@@ -776,7 +776,7 @@ export default function TargetConvergenceComparison({
                 />
                 
                 {/* Target Value Bars */}
-                <Bar dataKey="targetValue" name="Target value" fill="#22c55e" />
+                <Bar dataKey="targetValue" name="Target value" fill="#16a34a" />
                 
                 {/* First Dataset Estimates */}
                 <Bar dataKey="firstEstimate" name={firstName} fill="#3b82f6" />

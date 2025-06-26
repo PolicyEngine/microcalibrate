@@ -15,8 +15,8 @@ export default function DataTable({ data }: DataTableProps) {
   // Get unique epochs
   const allEpochs = Array.from(new Set(data.map(item => item.epoch))).sort((a, b) => a - b);
   
-  const [sortField, setSortField] = useState<keyof CalibrationDataPoint | 'random'>('random');
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const [sortField, setSortField] = useState<keyof CalibrationDataPoint | 'random'>('target_name');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [filter, setFilter] = useState('');
   const [epochFilter, setEpochFilter] = useState(maxEpoch);
   const [currentPage, setCurrentPage] = useState(1);
