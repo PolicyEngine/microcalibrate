@@ -1,4 +1,0 @@
-- bump: patch
-  changes:
-    fixed:
-    - Final weights are now consistent with the training log.

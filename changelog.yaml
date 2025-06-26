@@ -70,3 +70,8 @@
     - Adding total loss and error over epoch plots to dashboard.
     - Ordering targets alphanumerically in dashboard.
   date: 2025-06-26 11:01:53
+- bump: patch
+  changes:
+    fixed:
+    - Final weights are now consistent with the training log.
+  date: 2025-06-26 11:41:39
