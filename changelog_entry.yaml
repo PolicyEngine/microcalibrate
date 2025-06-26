@@ -1,0 +1,4 @@
+- bump: patch
+  changes:
+    changed:
+    - Loading dashboard automatically when sharing a deeplink.

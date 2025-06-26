@@ -558,16 +558,29 @@ export default function FileUpload({
       return;
     }
 
+    const githubToken = process.env.NEXT_PUBLIC_GITHUB_TOKEN;
+    if (!githubToken) {
+      setError('GitHub token not configured. Please set NEXT_PUBLIC_GITHUB_TOKEN environment variable.');
+      return;
+    }
+
     setIsLoadingGithubData(true);
     setError('');
 
     try {
-      // Note: Using unauthenticated requests for public repo metadata (branches/commits)
-      // This has lower rate limits but works for public repos
-      const response = await fetch(`https://api.github.com/repos/${githubRepo}/branches`);
+      // Use authenticated requests to avoid rate limiting
+      const response = await fetch(`https://api.github.com/repos/${githubRepo}/branches`, {
+        headers: {
+          'Authorization': `Bearer ${githubToken}`,
+          'Accept': 'application/vnd.github.v3+json',
+          'User-Agent': 'PolicyEngine-Dashboard/1.0'
+        }
+      });
       if (!response.ok) {
         if (response.status === 404) {
-          throw new Error('Repository not found. Please check the repository name and ensure it is public.');
+          throw new Error('Repository not found. Please check the repository name and ensure it is accessible.');
+        } else if (response.status === 403) {
+          throw new Error('Access forbidden. Please check your GitHub token permissions or repository access.');
         }
         throw new Error(`Failed to fetch branches: ${response.status} ${response.statusText}`);
       }
@@ -591,12 +604,26 @@ export default function FileUpload({
   async function fetchGithubCommits(branch: string) {
     if (!githubRepo.trim() || !branch) return;
 
+    const githubToken = process.env.NEXT_PUBLIC_GITHUB_TOKEN;
+    if (!githubToken) {
+      setError('GitHub token not configured. Please set NEXT_PUBLIC_GITHUB_TOKEN environment variable.');
+      return;
+    }
+
     setIsLoadingGithubData(true);
     try {
-      const response = await fetch(`https://api.github.com/repos/${githubRepo}/commits?sha=${branch}&per_page=20`);
+      const response = await fetch(`https://api.github.com/repos/${githubRepo}/commits?sha=${branch}&per_page=20`, {
+        headers: {
+          'Authorization': `Bearer ${githubToken}`,
+          'Accept': 'application/vnd.github.v3+json',
+          'User-Agent': 'PolicyEngine-Dashboard/1.0'
+        }
+      });
       if (!response.ok) {
         if (response.status === 404) {
           throw new Error('Branch not found or repository is private.');
+        } else if (response.status === 403) {
+          throw new Error('Access forbidden. Please check your GitHub token permissions or repository access.');
         }
         throw new Error(`Failed to fetch commits: ${response.status} ${response.statusText}`);
       }
@@ -844,12 +871,26 @@ export default function FileUpload({
   async function fetchSecondBranchCommits(branch: string) {
     if (!githubRepo.trim() || !branch) return;
 
+    const githubToken = process.env.NEXT_PUBLIC_GITHUB_TOKEN;
+    if (!githubToken) {
+      setError('GitHub token not configured. Please set NEXT_PUBLIC_GITHUB_TOKEN environment variable.');
+      return;
+    }
+
     setIsLoadingGithubData(true);
     try {
-      const response = await fetch(`https://api.github.com/repos/${githubRepo}/commits?sha=${branch}&per_page=20`);
+      const response = await fetch(`https://api.github.com/repos/${githubRepo}/commits?sha=${branch}&per_page=20`, {
+        headers: {
+          'Authorization': `Bearer ${githubToken}`,
+          'Accept': 'application/vnd.github.v3+json',
+          'User-Agent': 'PolicyEngine-Dashboard/1.0'
+        }
+      });
       if (!response.ok) {
         if (response.status === 404) {
           throw new Error('Branch not found or repository is private.');
+        } else if (response.status === 403) {
+          throw new Error('Access forbidden. Please check your GitHub token permissions or repository access.');
         }
         throw new Error(`Failed to fetch commits: ${response.status} ${response.statusText}`);
       }

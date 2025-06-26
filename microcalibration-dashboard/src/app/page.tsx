@@ -44,7 +44,10 @@ export default function Dashboard() {
       setFilename(name);
       setError('');
       setComparisonMode(false);
-      // Do not automatically show dashboard - let user click the button
+      // Automatically show dashboard when loading from deeplink, but not for manual uploads
+      if (isLoadingFromDeeplink) {
+        setShowDashboard(true);
+      }
     } catch (err) {
       console.error('Error parsing CSV:', err);
       setError(err instanceof Error ? err.message : 'Failed to parse CSV file');
@@ -66,7 +69,7 @@ export default function Dashboard() {
       setSecondFilename(filename2);
       setComparisonMode(true);
       setError('');
-      setShowDashboard(true); // Automatically show comparison dashboard
+      setShowDashboard(true); // Automatically show dashboard for comparison mode
     } catch (err) {
       console.error('Error parsing comparison CSV:', err);
       setError(err instanceof Error ? err.message : 'Failed to parse comparison CSV files');
@@ -163,6 +166,10 @@ export default function Dashboard() {
                 setDeeplinkParams(params);
                 setGithubArtifactInfo(params);
                 setIsLoadingFromDeeplink(false);
+                // Automatically show dashboard when loading from deeplink
+                if (primary) {
+                  setShowDashboard(true);
+                }
               }}
               onGithubLoad={(primary, secondary) => {
                 setGithubArtifactInfo({ mode: secondary ? 'comparison' : 'single', primary, secondary });
