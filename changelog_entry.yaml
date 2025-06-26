@@ -1,5 +1,0 @@
-- bump: minor
-  changes:
-    added:
-    - Adding total loss and error over epoch plots to dashboard. 
-    - Ordering targets alphanumerically in dashboard.
