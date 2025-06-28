@@ -2,7 +2,7 @@
 Test the calibration process.
 """
 
-from src.microcalibrate.calibration import Calibration
+from src.microcalibrate.calibration import ColumnSumCalibration
 import logging
 import numpy as np
 import pandas as pd
@@ -39,7 +39,7 @@ def test_calibration_basic() -> None:
         ]
     )
 
-    calibrator = Calibration(
+    calibrator = ColumnSumCalibration(
         estimate_matrix=targets_matrix,
         weights=weights,
         targets=targets,
@@ -94,7 +94,7 @@ def test_calibration_harder_targets() -> None:
         ]
     )
 
-    calibrator = Calibration(
+    calibrator = ColumnSumCalibration(
         estimate_matrix=targets_matrix,
         weights=weights,
         targets=targets,
@@ -161,7 +161,7 @@ def test_calibration_warnings_system(caplog) -> None:
         ]
     )
 
-    calibrator = Calibration(
+    calibrator = ColumnSumCalibration(
         estimate_matrix=targets_matrix,
         weights=weights,
         targets=targets,
