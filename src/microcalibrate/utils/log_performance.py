@@ -54,7 +54,9 @@ def log_performance_over_epochs(
                     "error": err,
                     "abs_error": abs(err),
                     "rel_abs_error": (
-                        abs(err) / target_val if target_val != 0 else np.nan
+                        abs(err) / abs(target_val)
+                        if target_val != 0
+                        else np.nan
                     ),
                 }
             )

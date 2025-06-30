@@ -1,0 +1,4 @@
+- bump: patch
+  changes:
+    changed:
+    - Taking abs val for abs_rel_error denominator.
