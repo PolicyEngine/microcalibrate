@@ -1,4 +1,0 @@
-- bump: patch
-  changes:
-    changed:
-    - Subsample to 10 epochs when loading dashboard.

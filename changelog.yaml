@@ -80,3 +80,8 @@
     changed:
     - Loading dashboard automatically when sharing a deeplink.
   date: 2025-06-26 11:47:53
+- bump: patch
+  changes:
+    changed:
+    - Subsample to 10 epochs when loading dashboard.
+  date: 2025-06-30 13:40:33
