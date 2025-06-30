@@ -90,3 +90,8 @@
     changed:
     - Increase limit to csv size.
   date: 2025-06-30 15:30:19
+- bump: patch
+  changes:
+    changed:
+    - Taking abs val for abs_rel_error denominator.
+  date: 2025-06-30 17:15:57
