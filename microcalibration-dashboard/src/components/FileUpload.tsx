@@ -374,9 +374,9 @@ export default function FileUpload({
       return;
     }
 
-    if (file.size > 50 * 1024 * 1024) {
-      // 50 MB limit
-      setError('File is too large (over 50 MB). Please use a smaller CSV file.');
+    if (file.size > 500 * 1024 * 1024) {
+      // 500 MB limit
+      setError('File is too large (over 500 MB). Please use a smaller CSV file.');
       return;
     }
 
@@ -402,8 +402,8 @@ export default function FileUpload({
       return;
     }
 
-    if (file.size > 50 * 1024 * 1024) {
-      setError('File is too large (over 50 MB). Please select a smaller CSV file.');
+    if (file.size > 500 * 1024 * 1024) {
+      setError('File is too large (over 500 MB). Please select a smaller CSV file.');
       return;
     }
 
