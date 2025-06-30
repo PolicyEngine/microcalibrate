@@ -232,7 +232,7 @@ export default function FileUpload({
     }
   }, [deeplinkParams, isLoadingFromDeeplink, loadDeeplinkArtifacts]);
 
-  function sampleEpochs(csvContent: string, maxEpochs = 20): { content: string; wasSampled: boolean; originalEpochs: number; sampledEpochs: number } {
+  function sampleEpochs(csvContent: string, maxEpochs = 10): { content: string; wasSampled: boolean; originalEpochs: number; sampledEpochs: number } {
     const lines = csvContent.trim().split('\n');
     const header = lines[0];
     const dataLines = lines.slice(1);
