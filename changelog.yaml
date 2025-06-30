@@ -85,3 +85,8 @@
     changed:
     - Subsample to 10 epochs when loading dashboard.
   date: 2025-06-30 13:40:33
+- bump: patch
+  changes:
+    changed:
+    - Increase limit to csv size.
+  date: 2025-06-30 15:30:19
