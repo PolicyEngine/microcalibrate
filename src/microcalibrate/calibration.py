@@ -21,6 +21,7 @@ class Calibration:
         noise_level: Optional[float] = 10.0,
         learning_rate: Optional[float] = 1e-3,
         dropout_rate: Optional[float] = 0.1,
+        normalization_factor: Optional[torch.Tensor] = None,
         csv_path: Optional[str] = None,
         device: str = None,
     ):
@@ -36,6 +37,7 @@ class Calibration:
             noise_level (float): Optional level of noise to add to weights. Defaults to 10.0.
             learning_rate (float): Optional learning rate for the optimizer. Defaults to 1e-3.
             dropout_rate (float): Optional probability of dropping weights during training. Defaults to 0.1.
+            normalization_factor (Optional[torch.Tensor]): Optional normalization factor for the loss (handles multi-level geographical calibration). Defaults to None.
             csv_path (str): Optional path to save performance logs as CSV. Defaults to None.
         """
 
@@ -69,6 +71,7 @@ class Calibration:
         self.noise_level = noise_level
         self.learning_rate = learning_rate
         self.dropout_rate = dropout_rate
+        self.normalization_factor = normalization_factor
         self.csv_path = csv_path
         self.performance_df = None
 
@@ -94,6 +97,7 @@ class Calibration:
             noise_level=self.noise_level,
             learning_rate=self.learning_rate,
             dropout_rate=self.dropout_rate,
+            normalization_factor=self.normalization_factor,
             csv_path=self.csv_path,
             device=self.device,
         )
