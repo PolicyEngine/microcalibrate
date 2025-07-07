@@ -24,6 +24,7 @@ def reweight(
     epochs: Optional[int] = 2_000,
     noise_level: Optional[float] = 10.0,
     learning_rate: Optional[float] = 1e-3,
+    normalization_factor: Optional[torch.Tensor] = None,
     csv_path: Optional[str] = None,
     device: Optional[str] = None,
 ) -> tuple[np.ndarray, np.ndarray]:
@@ -38,6 +39,9 @@ def reweight(
         epochs (int): Optional number of epochs for training.
         noise_level (float): Optional level of noise to add to the original weights.
         learning_rate (float): Optional learning rate for the optimizer.
+        normalization_factor (Optional[torch.Tensor]): Optional normalization factor for the loss (handles multi-level geographical calibration).
+        csv_path (Optional[str]): Optional path to save the performance metrics as a CSV file.
+        device (Optional[str]): Device to run the calibration on (e.g., 'cpu' or 'cuda'). If None, uses the default device.
 
     Returns:
         np.ndarray: Reweighted weights.
@@ -103,7 +107,7 @@ def reweight(
         optimizer.zero_grad()
         weights_ = dropout_weights(weights, dropout_rate)
         estimate = estimate_function(torch.exp(weights_))
-        l = loss(estimate, targets)
+        l = loss(estimate, targets, normalization_factor)
         close = pct_close(estimate, targets)
 
         if i % progress_update_interval == 0:
