@@ -1,0 +1,4 @@
+- bump: minor
+  changes:
+    added:
+    - Normalization parameter to handle multi-level geography calibration.
