@@ -95,3 +95,8 @@
     changed:
     - Taking abs val for abs_rel_error denominator.
   date: 2025-06-30 17:15:57
+- bump: minor
+  changes:
+    added:
+    - Normalization parameter to handle multi-level geography calibration.
+  date: 2025-07-07 11:51:26
