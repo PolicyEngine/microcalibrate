@@ -100,3 +100,9 @@
     added:
     - Normalization parameter to handle multi-level geography calibration.
   date: 2025-07-07 11:51:26
+- bump: patch
+  changes:
+    changed:
+    - Normalization parameter to handle multi-level geography calibration added to
+      Calibration class.
+  date: 2025-07-07 12:34:47

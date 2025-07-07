@@ -1,4 +1,0 @@
-- bump: patch
-  changes:
-    changed:
-    - Normalization parameter to handle multi-level geography calibration added to Calibration class.
