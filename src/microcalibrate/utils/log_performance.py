@@ -9,14 +9,18 @@ def log_performance_over_epochs(
     tracked: Dict[str, List[Any]],
     targets: torch.Tensor,
     target_names: List[str],
+    excluded_targets: Optional[List[str]] = None,
+    excluded_target_data: Optional[Dict[str, Dict[str, Any]]] = None,
 ) -> pd.DataFrame:
     """
     Calculate the errors and performance metrics for the model for all the logged epochs.
 
     Args:
         tracked (Dict[str, List[Any]]): Dictionary containing lists of tracked metrics.
-        targets (torch.Tensor): Array of target values.
-        targets_names (List[str]): Array of target names.
+        targets (torch.Tensor): Array of target values for calibration targets only.
+        target_names (List[str]): Array of target names for calibration targets only.
+        excluded_targets (Optional[List[str]]): List of target names excluded from calibration that should be present in the performance logging.
+        excluded_target_data (Optional[Dict[str, Dict[str, Any]]]): Dictionary containing excluded target data with initial estimates and targets.
 
     Returns:
         performance_df: DataFrame containing the calculated errors and performance metrics.
@@ -60,6 +64,31 @@ def log_performance_over_epochs(
                     ),
                 }
             )
+
+        # Add excluded targets with their initial estimates for each epoch
+        if excluded_targets and excluded_target_data:
+            for target_name in excluded_targets:
+                if target_name in excluded_target_data:
+                    target_data = excluded_target_data[target_name]
+                    target_val = target_data["target"]
+                    est_val = target_data["initial_estimate"]
+                    err = est_val - target_val
+
+                    rows.append(
+                        {
+                            **base,
+                            "target_name": target_name,
+                            "target": target_val,
+                            "estimate": est_val,
+                            "error": err,
+                            "abs_error": abs(err),
+                            "rel_abs_error": (
+                                abs(err) / abs(target_val)
+                                if target_val != 0
+                                else np.nan
+                            ),
+                        }
+                    )
 
     df = pd.DataFrame(rows)
 

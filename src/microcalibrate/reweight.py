@@ -25,6 +25,8 @@ def reweight(
     noise_level: Optional[float] = 10.0,
     learning_rate: Optional[float] = 1e-3,
     normalization_factor: Optional[torch.Tensor] = None,
+    excluded_targets: Optional[list] = None,
+    excluded_target_data: Optional[dict] = None,
     csv_path: Optional[str] = None,
     device: Optional[str] = None,
 ) -> tuple[np.ndarray, np.ndarray]:
@@ -40,6 +42,8 @@ def reweight(
         noise_level (float): Optional level of noise to add to the original weights.
         learning_rate (float): Optional learning rate for the optimizer.
         normalization_factor (Optional[torch.Tensor]): Optional normalization factor for the loss (handles multi-level geographical calibration).
+        excluded_targets (Optional[list]): Optional list of targets to exclude from calibration.
+        excluded_target_data (Optional[dict]): Optional dictionary containing excluded target data with initial estimates and targets.
         csv_path (Optional[str]): Optional path to save the performance metrics as a CSV file.
         device (Optional[str]): Device to run the calibration on (e.g., 'cpu' or 'cuda'). If None, uses the default device.
 
@@ -58,7 +62,12 @@ def reweight(
         f"std: {original_weights.std():.4f}"
     )
 
-    targets = torch.tensor(targets_array, dtype=torch.float32, device=device)
+    targets = torch.tensor(
+        targets_array,
+        dtype=torch.float32,
+        device=device,
+    )
+
     random_noise = np.random.random(original_weights.shape) * noise_level
     weights = torch.tensor(
         np.log(original_weights + random_noise),
@@ -147,7 +156,11 @@ def reweight(
     }
 
     performance_df = log_performance_over_epochs(
-        tracker_dict, targets, target_names
+        tracker_dict,
+        targets,
+        target_names,
+        excluded_targets,
+        excluded_target_data,
     )
 
     if csv_path:
