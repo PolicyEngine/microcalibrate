@@ -1,0 +1,4 @@
+- bump: minor
+  changes:
+    added:
+    - Add excluded_targets logic to handle holdout targets.
