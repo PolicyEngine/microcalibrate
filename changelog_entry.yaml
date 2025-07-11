@@ -1,0 +1,4 @@
+- bump: minor
+  changes:
+    added:
+    - Adding analytical assessment of targets to Calibration class.
