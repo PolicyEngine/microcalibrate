@@ -254,9 +254,19 @@ def test_calibration_excluded_targets() -> None:
         excluded_targets=excluded_targets,
     )
 
-    performance_df = calibrator.calibrate()
-    final_estimates = calibrator.estimate()
+    first_performance_df = calibrator.calibrate()
+    first_calibration_estimates = calibrator.estimate()
 
-    assert len(final_estimates) == len(
+    assert len(first_calibration_estimates) == len(
         np.array(calibrator.targets)
     ), "Excluded target income_aged_20_30 should not be calibrated."
+
+    # iteratively exclude new targets and calibrate
+    new_target_to_exclude = ["income_aged_30_40"]
+    calibrator.exclude_targets(new_target_to_exclude)
+    second_performance_df = calibrator.calibrate()
+    second_calibration_estimates = calibrator.estimate()
+
+    assert (
+        new_target_to_exclude[0] not in calibrator.target_names
+    ), f"Target {new_target_to_exclude[0]} should be excluded from calibration."

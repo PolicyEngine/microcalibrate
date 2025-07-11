@@ -22,7 +22,7 @@ class Calibration:
         learning_rate: Optional[float] = 1e-3,
         dropout_rate: Optional[float] = 0.1,
         normalization_factor: Optional[torch.Tensor] = None,
-        excluded_targets: Optional[list] = None,
+        excluded_targets: Optional[list[str]] = None,
         csv_path: Optional[str] = None,
         device: str = None,
     ):
@@ -51,129 +51,59 @@ class Calibration:
                 if torch.cuda.is_available()
                 else "mps" if torch.mps.is_available() else "cpu"
             )
-
+        self.original_estimate_matrix = estimate_matrix
+        self.original_targets = targets
+        self.original_target_names = target_names
         self.weights = weights
+        self.excluded_targets = excluded_targets
+        self.estimate_function = estimate_function
         self.epochs = epochs
         self.noise_level = noise_level
         self.learning_rate = learning_rate
         self.dropout_rate = dropout_rate
         self.normalization_factor = normalization_factor
-        self.excluded_targets = excluded_targets
         self.csv_path = csv_path
         self.performance_df = None
 
-        # Set target names from estimate_matrix if not provided
-        if target_names is None and estimate_matrix is not None:
-            target_names = estimate_matrix.columns.to_numpy()
-
-        excluded_indices = []
+        self.estimate_matrix = None
+        self.targets = None
+        self.target_names = None
         self.excluded_target_data = {}
-        if self.excluded_targets and target_names is not None:
-            # Find indices of excluded targets
-            for i, name in enumerate(target_names):
-                if name in self.excluded_targets:
-                    excluded_indices.append(i)
-                    self.excluded_target_data[name] = {
-                        "target": targets[i],
-                        "index": i,
-                    }
 
-            # Remove excluded targets from calibration
-            calibration_mask = ~np.isin(
-                np.arange(len(target_names)), excluded_indices
-            )
-            targets_array = targets[calibration_mask]
-            target_names = (
-                target_names[calibration_mask]
-                if target_names is not None
-                else None
+        # Set target names from estimate_matrix if not provided
+        if target_names is None and self.original_estimate_matrix is not None:
+            self.original_target_names = (
+                self.original_estimate_matrix.columns.to_numpy()
             )
 
-            logger.info(
-                f"Excluded {len(excluded_indices)} targets from calibration: {self.excluded_targets}"
-            )
-            logger.info(f"Calibrating {len(targets_array)} targets")
+        if self.excluded_targets is not None:
+            self.exclude_targets()
         else:
-            targets_array = targets
-            target_names = target_names
-
-        # Get initial estimates for excluded targets if needed
-        if self.excluded_targets:
-            initial_weights_tensor = torch.tensor(
-                weights, dtype=torch.float32, device=self.device
-            )
-            if estimate_function is not None:
-                initial_estimates_all = (
-                    estimate_function(initial_weights_tensor)
-                    .detach()
-                    .cpu()
-                    .numpy()
-                )
-            elif estimate_matrix is not None:
-                # Store original DataFrame for assessment
-                self.original_estimate_matrix = estimate_matrix
-                # Filter estimate matrix for calibration
-                filtered_estimate_matrix = estimate_matrix.iloc[
-                    :, calibration_mask
-                ]
+            self.targets = self.original_targets
+            self.target_names = self.original_target_names
+            if self.original_estimate_matrix is not None:
                 self.estimate_matrix = torch.tensor(
-                    filtered_estimate_matrix.values,
-                    dtype=torch.float32,
-                    device=self.device,
-                )
-                estimate_matrix_tensor = torch.tensor(
-                    estimate_matrix.values,
-                    dtype=torch.float32,
-                    device=self.device,
-                )
-                initial_estimates_all = (
-                    (initial_weights_tensor @ estimate_matrix_tensor)
-                    .detach()
-                    .cpu()
-                    .numpy()
-                )
-            else:
-                raise ValueError(
-                    "Either estimate_function or estimate_matrix must be provided"
-                )
-
-            # Store initial estimates for excluded targets
-            for name in self.excluded_targets:
-                if name in self.excluded_target_data:
-                    self.excluded_target_data[name]["initial_estimate"] = (
-                        initial_estimates_all[
-                            self.excluded_target_data[name]["index"]
-                        ]
-                    )
-
-        else:
-            if estimate_matrix is not None:
-                # Store original DataFrame for assessment
-                self.original_estimate_matrix = estimate_matrix
-                self.estimate_matrix = torch.tensor(
-                    estimate_matrix.values,
+                    self.original_estimate_matrix.values,
                     dtype=torch.float32,
                     device=self.device,
                 )
             else:
                 self.estimate_matrix = None
-                self.original_estimate_matrix = None
 
-        # Set up final attributes based on whether we have excluded targets
-        self.targets = targets_array
-        self.target_names = target_names
-
-        if estimate_function is None:
-            self.estimate_function = (
-                lambda weights: weights @ self.estimate_matrix
-            )
-        else:
-            self.estimate_function = estimate_function
-            if self.excluded_targets:
-                logger.warning(
-                    "You are passing an estimate function with excluded targets. "
-                    "Make sure the function handles excluded targets correctly, as reweight() will handle the filtering."
+        if self.estimate_function is None:
+            if self.estimate_matrix is not None:
+                self.estimate_function = (
+                    lambda weights: weights @ self.estimate_matrix
                 )
+            else:
+                raise ValueError(
+                    "Either estimate_function or estimate_matrix must be provided"
+                )
+        elif self.excluded_targets:
+            logger.warning(
+                "You are passing an estimate function with excluded targets. "
+                "Make sure the function handles excluded targets correctly, as reweight() will handle the filtering."
+            )
 
     def calibrate(self) -> None:
         """Calibrate the weights based on the estimate function and targets."""
@@ -209,6 +139,110 @@ class Calibration:
         self.weights = new_weights
 
         return self.performance_df
+
+    def exclude_targets(
+        self, excluded_targets: Optional[list[str]] = None
+    ) -> None:
+        """Exclude specified targets from calibration.
+
+        Args:
+            excluded_targets (Optional[list[str]]): List of target names to exclude from calibration. If None, the original excluded_targets passed to the calibration constructor will be excluded.
+        """
+        if excluded_targets is not None:
+            self.excluded_targets = excluded_targets
+        excluded_indices = []
+        self.excluded_target_data = {}
+        if self.excluded_targets and self.original_target_names is not None:
+            # Find indices of excluded targets
+            for i, name in enumerate(self.original_target_names):
+                if name in self.excluded_targets:
+                    excluded_indices.append(i)
+                    self.excluded_target_data[name] = {
+                        "target": self.original_targets[i],
+                        "index": i,
+                    }
+
+            # Remove excluded targets from calibration
+            calibration_mask = ~np.isin(
+                np.arange(len(self.original_target_names)), excluded_indices
+            )
+            targets_array = self.original_targets[calibration_mask]
+            target_names = (
+                self.original_target_names[calibration_mask]
+                if self.original_target_names is not None
+                else None
+            )
+
+            logger.info(
+                f"Excluded {len(excluded_indices)} targets from calibration: {self.excluded_targets}"
+            )
+            logger.info(f"Calibrating {len(targets_array)} targets")
+        else:
+            targets_array = self.original_targets
+            target_names = self.original_target_names
+
+        # Get initial estimates for excluded targets if needed
+        if self.excluded_targets:
+            initial_weights_tensor = torch.tensor(
+                self.weights, dtype=torch.float32, device=self.device
+            )
+            if self.estimate_function is not None:
+                initial_estimates_all = (
+                    self.estimate_function(initial_weights_tensor)
+                    .detach()
+                    .cpu()
+                    .numpy()
+                )
+            elif self.original_estimate_matrix is not None:
+                # Get initial estimates using the original full matrix
+                original_estimate_matrix_tensor = torch.tensor(
+                    self.original_estimate_matrix.values,
+                    dtype=torch.float32,
+                    device=self.device,
+                )
+                initial_estimates_all = (
+                    (initial_weights_tensor @ original_estimate_matrix_tensor)
+                    .detach()
+                    .cpu()
+                    .numpy()
+                )
+
+                # Filter estimate matrix for calibration
+                filtered_estimate_matrix = self.original_estimate_matrix.iloc[
+                    :, calibration_mask
+                ]
+                self.estimate_matrix = torch.tensor(
+                    filtered_estimate_matrix.values,
+                    dtype=torch.float32,
+                    device=self.device,
+                )
+            else:
+                raise ValueError(
+                    "Either estimate_function or estimate_matrix must be provided"
+                )
+
+            # Store initial estimates for excluded targets
+            for name in self.excluded_targets:
+                if name in self.excluded_target_data:
+                    self.excluded_target_data[name]["initial_estimate"] = (
+                        initial_estimates_all[
+                            self.excluded_target_data[name]["index"]
+                        ]
+                    )
+
+        else:
+            if self.original_estimate_matrix is not None:
+                self.estimate_matrix = torch.tensor(
+                    self.original_estimate_matrix.values,
+                    dtype=torch.float32,
+                    device=self.device,
+                )
+            else:
+                self.estimate_matrix = None
+
+        # Set up final attributes
+        self.targets = targets_array
+        self.target_names = target_names
 
     def estimate(self) -> pd.Series:
         return pd.Series(
