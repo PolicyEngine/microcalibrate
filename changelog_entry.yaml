@@ -2,3 +2,4 @@
   changes:
     added:
     - Adding analytical assessment of targets to Calibration class.
+    - Supporting loading a csv with infinite values in the dashboard.
