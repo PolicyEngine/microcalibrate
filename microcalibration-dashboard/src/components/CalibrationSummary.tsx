@@ -39,6 +39,18 @@ export default function CalibrationSummary({ data }: CalibrationSummaryProps) {
     targetGroups.get(point.target_name)!.push(point);
   });
 
+  // Identify excluded targets (those with constant estimates across epochs)
+  const excludedTargets: string[] = [];
+  targetGroups.forEach((points, targetName) => {
+    if (points.length > 1) {
+      const estimates = points.map(p => p.estimate);
+      const isConstant = estimates.every(est => Math.abs(est - estimates[0]) < 1e-6);
+      if (isConstant) {
+        excludedTargets.push(targetName);
+      }
+    }
+  });
+
   // Calculate metrics for each target
   targetGroups.forEach((points, targetName) => {
     // Sort by epoch to get initial and final states
@@ -48,7 +60,8 @@ export default function CalibrationSummary({ data }: CalibrationSummaryProps) {
     
     if (initialPoint && finalPoint && 
         initialPoint.rel_abs_error !== undefined && finalPoint.rel_abs_error !== undefined &&
-        !isNaN(initialPoint.rel_abs_error) && !isNaN(finalPoint.rel_abs_error)) {
+        !isNaN(initialPoint.rel_abs_error) && !isNaN(finalPoint.rel_abs_error) &&
+        !excludedTargets.includes(targetName)) { // Exclude excluded targets from improvement calculations
       
       const initialError = initialPoint.rel_abs_error;
       const finalError = finalPoint.rel_abs_error;
@@ -175,9 +188,35 @@ export default function CalibrationSummary({ data }: CalibrationSummaryProps) {
   return (
     <div className="bg-white border border-gray-300 p-6 rounded-lg shadow-sm">
       <h2 className="text-xl font-bold text-gray-800 mb-4">Calibration progress summary</h2>
-      <p className="text-gray-600 mb-6">
+      <p className="text-gray-600 mb-4">
         Analysis of how calibration affected each target&apos;s accuracy from initial to final epoch
       </p>
+
+      {/* Excluded Targets Info */}
+      <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-sm font-semibold text-blue-800">Excluded targets</h3>
+            <p className="text-xs text-blue-600 mt-1">
+              Targets excluded from calibration
+            </p>
+          </div>
+          <div className="text-right">
+            {excludedTargets.length > 0 ? (
+              <>
+                <div className="text-lg font-bold text-blue-700">{excludedTargets.length}</div>
+                <div className="text-xs text-blue-600">
+                  {excludedTargets.length <= 3 
+                    ? excludedTargets.join(', ')
+                    : `${excludedTargets.slice(0, 3).join(', ')}, +${excludedTargets.length - 3} more`}
+                </div>
+              </>
+            ) : (
+              <div className="text-sm text-blue-600">None</div>
+            )}
+          </div>
+        </div>
+      </div>
 
       {/* Summary Statistics */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">

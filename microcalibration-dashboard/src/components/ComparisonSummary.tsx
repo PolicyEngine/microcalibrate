@@ -13,6 +13,7 @@ interface ComparisonSummaryProps {
 interface DatasetSummary {
   totalTargets: number;
   uniqueTargets: Set<string>;
+  excludedTargets: string[];
   epochs: number[];
   maxEpoch: number;
   minEpoch: number;
@@ -32,6 +33,28 @@ export default function ComparisonSummary({ firstData, secondData, firstName, se
   const analyzeDataset = (data: CalibrationDataPoint[]): DatasetSummary => {
     const uniqueTargets = new Set(data.map(d => d.target_name));
     const epochs = Array.from(new Set(data.map(d => d.epoch))).sort((a, b) => a - b);
+    
+    // Identify excluded targets (those with constant estimates across epochs)
+    const excludedTargets: string[] = [];
+    const targetGroups = new Map<string, CalibrationDataPoint[]>();
+    
+    // Group by target name
+    data.forEach(point => {
+      if (!targetGroups.has(point.target_name)) {
+        targetGroups.set(point.target_name, []);
+      }
+      targetGroups.get(point.target_name)!.push(point);
+    });
+    
+    targetGroups.forEach((points, targetName) => {
+      if (points.length > 1) {
+        const estimates = points.map(p => p.estimate);
+        const isConstant = estimates.every(est => Math.abs(est - estimates[0]) < 1e-6);
+        if (isConstant) {
+          excludedTargets.push(targetName);
+        }
+      }
+    });
     
     // Get final epoch data for quality assessment
     const maxEpoch = Math.max(...epochs);
@@ -62,7 +85,8 @@ export default function ComparisonSummary({ firstData, secondData, firstName, se
       
       if (initialTarget && finalTarget && 
           initialTarget.rel_abs_error !== undefined && finalTarget.rel_abs_error !== undefined &&
-          !isNaN(initialTarget.rel_abs_error) && !isNaN(finalTarget.rel_abs_error)) {
+          !isNaN(initialTarget.rel_abs_error) && !isNaN(finalTarget.rel_abs_error) &&
+          !excludedTargets.includes(targetName)) { // Exclude excluded targets from progress calculations
         
         const improvement = initialTarget.rel_abs_error - finalTarget.rel_abs_error;
         const relativeImprovement = initialTarget.rel_abs_error > 0 ? improvement / initialTarget.rel_abs_error : 0;
@@ -76,6 +100,7 @@ export default function ComparisonSummary({ firstData, secondData, firstName, se
     return {
       totalTargets: uniqueTargets.size,
       uniqueTargets,
+      excludedTargets,
       epochs,
       maxEpoch,
       minEpoch,
@@ -94,6 +119,13 @@ export default function ComparisonSummary({ firstData, secondData, firstName, se
   const overlappingTargets = new Set([...firstSummary.uniqueTargets].filter(x => secondSummary.uniqueTargets.has(x)));
   const firstOnlyTargets = new Set([...firstSummary.uniqueTargets].filter(x => !secondSummary.uniqueTargets.has(x)));
   const secondOnlyTargets = new Set([...secondSummary.uniqueTargets].filter(x => !firstSummary.uniqueTargets.has(x)));
+  
+  // Find excluded targets overlap
+  const firstExcluded = new Set(firstSummary.excludedTargets);
+  const secondExcluded = new Set(secondSummary.excludedTargets);
+  const overlappingExcluded = new Set([...firstExcluded].filter(x => secondExcluded.has(x)));
+  const firstOnlyExcluded = new Set([...firstExcluded].filter(x => !secondExcluded.has(x)));
+  const secondOnlyExcluded = new Set([...secondExcluded].filter(x => !firstExcluded.has(x)));
 
   return (
     <div className="bg-white border border-gray-300 p-6 rounded-lg shadow-sm">
@@ -121,6 +153,12 @@ export default function ComparisonSummary({ firstData, secondData, firstName, se
             <div className="flex justify-between">
               <span className="text-blue-600">Avg final error:</span>
               <span className="font-medium text-blue-800">{(firstSummary.avgFinalError * 100).toFixed(2)}%</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-blue-600">Excluded targets:</span>
+              <span className="font-medium text-blue-800">
+                {firstSummary.excludedTargets.length > 0 ? firstSummary.excludedTargets.length : 'None'}
+              </span>
             </div>
           </div>
 
@@ -180,6 +218,12 @@ export default function ComparisonSummary({ firstData, secondData, firstName, se
             <div className="flex justify-between">
               <span className="text-purple-600">Avg final error:</span>
               <span className="font-medium text-purple-800">{(secondSummary.avgFinalError * 100).toFixed(2)}%</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-purple-600">Excluded targets:</span>
+              <span className="font-medium text-purple-800">
+                {secondSummary.excludedTargets.length > 0 ? secondSummary.excludedTargets.length : 'None'}
+              </span>
             </div>
           </div>
 
@@ -277,6 +321,69 @@ export default function ComparisonSummary({ firstData, secondData, firstName, se
           </p>
         </div>
       </div>
+
+      {/* Excluded targets analysis */}
+      {(firstExcluded.size > 0 || secondExcluded.size > 0) && (
+        <div className="border-t border-gray-200 pt-6 mt-6">
+          <h3 className="text-lg font-semibold text-gray-800 mb-4">
+            Excluded targets analysis
+          </h3>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Common excluded */}
+            <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+              <div className="flex items-center mb-2">
+                <div className="w-3 h-3 bg-orange-500 rounded-full mr-2"></div>
+                <h4 className="font-semibold text-orange-800">Both excluded</h4>
+              </div>
+              <div className="text-2xl font-bold text-orange-700">{overlappingExcluded.size}</div>
+              <div className="text-xs text-orange-600">
+                {overlappingExcluded.size <= 3 
+                  ? [...overlappingExcluded].join(', ') || 'None'
+                  : `${[...overlappingExcluded].slice(0, 3).join(', ')}, +${overlappingExcluded.size - 3} more`}
+              </div>
+            </div>
+
+            {/* First dataset excluded only */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div className="flex items-center mb-2">
+                <div className="w-3 h-3 bg-blue-500 rounded-full mr-2"></div>
+                <h4 className="font-semibold text-blue-800">First excluded only</h4>
+              </div>
+              <div className="text-2xl font-bold text-blue-700">{firstOnlyExcluded.size}</div>
+              <div className="text-xs text-blue-600">
+                {firstOnlyExcluded.size <= 3 
+                  ? [...firstOnlyExcluded].join(', ') || 'None'
+                  : `${[...firstOnlyExcluded].slice(0, 3).join(', ')}, +${firstOnlyExcluded.size - 3} more`}
+              </div>
+            </div>
+
+            {/* Second dataset excluded only */}
+            <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+              <div className="flex items-center mb-2">
+                <div className="w-3 h-3 bg-purple-500 rounded-full mr-2"></div>
+                <h4 className="font-semibold text-purple-800">Second excluded only</h4>
+              </div>
+              <div className="text-2xl font-bold text-purple-700">{secondOnlyExcluded.size}</div>
+              <div className="text-xs text-purple-600">
+                {secondOnlyExcluded.size <= 3 
+                  ? [...secondOnlyExcluded].join(', ') || 'None'
+                  : `${[...secondOnlyExcluded].slice(0, 3).join(', ')}, +${secondOnlyExcluded.size - 3} more`}
+              </div>
+            </div>
+          </div>
+
+          {/* Excluded targets summary */}
+          <div className="mt-4 p-3 bg-orange-50 border border-orange-200 rounded">
+            <p className="text-sm text-orange-700">
+              <strong>Excluded targets note:</strong> These targets were held constant during calibration and appear in logs with their initial estimates for reference.
+              {overlappingExcluded.size > 0 && ` ${overlappingExcluded.size} targets were excluded in both runs.`}
+              {firstOnlyExcluded.size > 0 && ` ${firstOnlyExcluded.size} targets were excluded only in the first run.`}
+              {secondOnlyExcluded.size > 0 && ` ${secondOnlyExcluded.size} targets were excluded only in the second run.`}
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
