@@ -106,3 +106,8 @@
     - Normalization parameter to handle multi-level geography calibration added to
       Calibration class.
   date: 2025-07-07 12:34:47
+- bump: minor
+  changes:
+    added:
+    - Add excluded_targets logic to handle holdout targets.
+  date: 2025-07-15 10:32:10

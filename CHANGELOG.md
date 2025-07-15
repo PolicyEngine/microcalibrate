@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), 
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.15.0] - 2025-07-15 10:32:10
+
+### Added
+
+- Add excluded_targets logic to handle holdout targets.
+
 ## [0.14.1] - 2025-07-07 12:34:47
 
 ### Changed
@@ -135,6 +141,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+[0.15.0]: https://github.com/PolicyEngine/microcalibrate/compare/0.14.1...0.15.0
 [0.14.1]: https://github.com/PolicyEngine/microcalibrate/compare/0.14.0...0.14.1
 [0.14.0]: https://github.com/PolicyEngine/microcalibrate/compare/0.13.5...0.14.0
 [0.13.5]: https://github.com/PolicyEngine/microcalibrate/compare/0.13.4...0.13.5
