@@ -1,7 +1,7 @@
 import logging
 import os
 from pathlib import Path
-from typing import Callable, Optional
+from typing import Callable, List, Optional
 
 import numpy as np
 import pandas as pd
@@ -25,7 +25,7 @@ def reweight(
     noise_level: Optional[float] = 10.0,
     learning_rate: Optional[float] = 1e-3,
     normalization_factor: Optional[torch.Tensor] = None,
-    excluded_targets: Optional[list] = None,
+    excluded_targets: Optional[List] = None,
     excluded_target_data: Optional[dict] = None,
     csv_path: Optional[str] = None,
     device: Optional[str] = None,
@@ -42,7 +42,7 @@ def reweight(
         noise_level (float): Optional level of noise to add to the original weights.
         learning_rate (float): Optional learning rate for the optimizer.
         normalization_factor (Optional[torch.Tensor]): Optional normalization factor for the loss (handles multi-level geographical calibration).
-        excluded_targets (Optional[list]): Optional list of targets to exclude from calibration.
+        excluded_targets (Optional[List]): Optional List of targets to exclude from calibration.
         excluded_target_data (Optional[dict]): Optional dictionary containing excluded target data with initial estimates and targets.
         csv_path (Optional[str]): Optional path to save the performance metrics as a CSV file.
         device (Optional[str]): Device to run the calibration on (e.g., 'cpu' or 'cuda'). If None, uses the default device.

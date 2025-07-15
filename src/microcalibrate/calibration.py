@@ -1,5 +1,5 @@
 import logging
-from typing import Callable, Optional
+from typing import Callable, List, Optional
 
 import numpy as np
 import pandas as pd
@@ -22,7 +22,7 @@ class Calibration:
         learning_rate: Optional[float] = 1e-3,
         dropout_rate: Optional[float] = 0.1,
         normalization_factor: Optional[torch.Tensor] = None,
-        excluded_targets: Optional[list[str]] = None,
+        excluded_targets: Optional[List[str]] = None,
         csv_path: Optional[str] = None,
         device: str = None,
     ):
@@ -39,7 +39,7 @@ class Calibration:
             learning_rate (float): Optional learning rate for the optimizer. Defaults to 1e-3.
             dropout_rate (float): Optional probability of dropping weights during training. Defaults to 0.1.
             normalization_factor (Optional[torch.Tensor]): Optional normalization factor for the loss (handles multi-level geographical calibration). Defaults to None.
-            excluded_targets (Optional[list]): Optional list of targets to exclude from calibration. Defaults to None.
+            excluded_targets (Optional[List]): Optional List of targets to exclude from calibration. Defaults to None.
             csv_path (str): Optional path to save performance logs as CSV. Defaults to None.
             device (str): Optional device to run the calibration on. Defaults to None, which will use CUDA if available, otherwise MPS, otherwise CPU.
         """
@@ -141,12 +141,12 @@ class Calibration:
         return self.performance_df
 
     def exclude_targets(
-        self, excluded_targets: Optional[list[str]] = None
+        self, excluded_targets: Optional[List[str]] = None
     ) -> None:
         """Exclude specified targets from calibration.
 
         Args:
-            excluded_targets (Optional[list[str]]): List of target names to exclude from calibration. If None, the original excluded_targets passed to the calibration constructor will be excluded.
+            excluded_targets (Optional[List[str]]): List of target names to exclude from calibration. If None, the original excluded_targets passed to the calibration constructor will be excluded.
         """
         if excluded_targets is not None:
             self.excluded_targets = excluded_targets
