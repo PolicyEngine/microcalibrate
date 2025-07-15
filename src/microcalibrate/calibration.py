@@ -389,14 +389,14 @@ class Calibration:
 
             return round(np.mean((y - y_hat) ** 2), 3)  # mostly for display
 
-        X = self.estimate_matrix_tensor.cpu().numpy()
+        X = self.original_estimate_matrix.values
         y = self.targets
 
         slices = []
         iterative_losses = []
         idx_dict = {
-            self.estimate_matrix.columns.to_list()[i]: i
-            for i in range(len(self.estimate_matrix.columns))
+            self.original_estimate_matrix.columns.to_list()[i]: i
+            for i in range(len(self.original_estimate_matrix.columns))
         }
 
         logger.info(
