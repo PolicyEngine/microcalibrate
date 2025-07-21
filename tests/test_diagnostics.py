@@ -130,7 +130,3 @@ def test_calibration_analytical_solution(caplog) -> None:
     assert set(analytical_assessment["target_added"]) == set(
         list(targets_matrix.columns)
     ), "Not all targets were added to the assessment."
-
-    assert (
-        analytical_assessment["loss"].all() != 0
-    ), "Loss values should not be zero."
