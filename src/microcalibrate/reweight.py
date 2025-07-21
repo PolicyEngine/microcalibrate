@@ -1,7 +1,7 @@
 import logging
 import os
 from pathlib import Path
-from typing import Callable, List, Optional
+from typing import Callable, List, Optional, Union
 
 import numpy as np
 import pandas as pd
@@ -9,6 +9,7 @@ import torch
 from torch import Tensor
 from tqdm import tqdm
 
+from .utils.l0 import HardConcrete
 from .utils.log_performance import log_performance_over_epochs
 from .utils.metrics import loss, pct_close
 
@@ -20,6 +21,10 @@ def reweight(
     estimate_function: Callable[[Tensor], Tensor],
     targets_array: np.ndarray,
     target_names: np.ndarray,
+    l0_lambda: float,
+    init_mean: float,
+    temperature: float,
+    regularize: bool,
     dropout_rate: Optional[float] = 0.05,
     epochs: Optional[int] = 2_000,
     noise_level: Optional[float] = 10.0,
@@ -29,7 +34,7 @@ def reweight(
     excluded_target_data: Optional[dict] = None,
     csv_path: Optional[str] = None,
     device: Optional[str] = None,
-) -> tuple[np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, Union[np.ndarray, None], pd.DataFrame]:
     """Reweight the original weights based on the loss matrix and targets.
 
     Args:
@@ -37,6 +42,10 @@ def reweight(
         estimate_function (Callable[[Tensor], Tensor]): Function to estimate targets from weights.
         targets_array (np.ndarray): Array of target values.
         target_names (np.ndarray): Names of the targets.
+        l0_lambda (float): Regularization parameter for L0 regularization.
+        init_mean (float): Initial mean for L0 regularization, representing the initial proportion of non-zero weights.
+        temperature (float): Temperature parameter for L0 regularization, controlling the sparsity of the model.
+        regularize (bool): Whether to apply L0 regularization.
         dropout_rate (float): Optional probability of dropping weights during training.
         epochs (int): Optional number of epochs for training.
         noise_level (float): Optional level of noise to add to the original weights.
@@ -110,7 +119,7 @@ def reweight(
     estimates_over_epochs = []
     pct_close_over_epochs = []
     max_epochs = epochs - 1 if epochs > 0 else 0
-    epochs = []
+    epochs_list = []
 
     for i in iterator:
         optimizer.zero_grad()
@@ -130,7 +139,7 @@ def reweight(
             )
 
         if i % tracking_n == 0:
-            epochs.append(i)
+            epochs_list.append(i)
             loss_over_epochs.append(l.item())
             pct_close_over_epochs.append(close)
             estimates_over_epochs.append(estimate.detach().cpu().numpy())
@@ -150,7 +159,7 @@ def reweight(
             optimizer.step()
 
     tracker_dict = {
-        "epochs": epochs,
+        "epochs": epochs_list,
         "loss": loss_over_epochs,
         "estimates": estimates_over_epochs,
     }
@@ -169,11 +178,106 @@ def reweight(
         csv_path.parent.mkdir(parents=True, exist_ok=True)
         performance_df.to_csv(csv_path, index=True)
 
-    logger.info(f"Reweighting completed. Final sample size: {len(weights)}")
+    logger.info(
+        f"Dense reweighting completed. Final sample size: {len(weights)}"
+    )
 
     final_weights = torch.exp(weights_).detach().cpu().numpy()
 
+    if regularize:
+        logger.info("Applying L0 regularization to the weights.")
+
+        # Sparse, regularized weights depending on temperature, init_mean, l0_lambda -----
+        weights = torch.tensor(
+            np.log(original_weights),
+            requires_grad=True,
+            dtype=torch.float32,
+            device=device,
+        )
+        gates = HardConcrete(
+            len(original_weights), init_mean=init_mean, temperature=temperature
+        ).to(device)
+        # NOTE: Results are pretty sensitve to learning rates
+        # optimizer breaks down somewhere near .005, does better at above .1
+        optimizer = torch.optim.Adam(
+            [weights] + list(gates.parameters()), lr=0.2
+        )
+        start_loss = None
+
+        loss_over_epochs_sparse = []
+        estimates_over_epochs_sparse = []
+        pct_close_over_epochs_sparse = []
+        epochs_sparse = []
+
+        iterator = tqdm(
+            range(epochs * 2), desc="Sparse reweighting progress", unit="epoch"
+        )  # lower learning rate, harder optimization
+
+        for i in iterator:
+            optimizer.zero_grad()
+            weights_ = dropout_weights(weights, dropout_rate)
+            masked = torch.exp(weights_) * gates()
+            estimate = estimate_function(masked)
+            l_main = loss(estimate, targets, normalization_factor)
+            l = l_main + l0_lambda * gates.get_penalty()
+            close = pct_close(estimate, targets)
+            if i % tracking_n / 2 == 0:
+                epochs_sparse.append(i)
+                loss_over_epochs_sparse.append(l.item())
+                pct_close_over_epochs_sparse.append(close)
+                estimates_over_epochs_sparse.append(
+                    estimate.detach().cpu().numpy()
+                )
+
+                logger.info(
+                    f"Within 10% from targets in sparse calibration: {close:.2%} \n"
+                )
+
+                if len(loss_over_epochs_sparse) > 1:
+                    loss_change = loss_over_epochs_sparse[-2] - l.item()
+                    logger.info(
+                        f"Epoch {i:4d}: Loss = {l.item():.6f}, "
+                        f"Change = {loss_change:.6f} "
+                        f"({'improving' if loss_change > 0 else 'worsening'})"
+                    )
+            if start_loss is None:
+                start_loss = l.item()
+            loss_rel_change = (l.item() - start_loss) / start_loss
+            l.backward()
+            iterator.set_postfix(
+                {"loss": l.item(), "loss_rel_change": loss_rel_change}
+            )
+            optimizer.step()
+
+        gates.eval()
+        final_weights_sparse = (
+            (torch.exp(weights) * gates()).detach().cpu().numpy()
+        )
+
+        tracker_dict_sparse = {
+            "epochs": epochs_sparse,
+            "loss": loss_over_epochs_sparse,
+            "estimates": estimates_over_epochs_sparse,
+        }
+
+        sparse_performance_df = log_performance_over_epochs(
+            tracker_dict_sparse,
+            targets,
+            target_names,
+            excluded_targets,
+            excluded_target_data,
+        )
+
+        if csv_path:
+            # Create directory if it doesn't exist
+            csv_path = Path(str(csv_path).replace(".csv", "_sparse.csv"))
+            csv_path.parent.mkdir(parents=True, exist_ok=True)
+            sparse_performance_df.to_csv(csv_path, index=True)
+    else:
+        final_weights_sparse = None
+
     return (
         final_weights,
+        final_weights_sparse,
         performance_df,
     )

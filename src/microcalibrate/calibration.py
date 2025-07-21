@@ -24,7 +24,11 @@ class Calibration:
         normalization_factor: Optional[torch.Tensor] = None,
         excluded_targets: Optional[List[str]] = None,
         csv_path: Optional[str] = None,
-        device: str = None,
+        device: str = "cpu",  # fix to cpu for now to avoid user device-specific issues
+        l0_lambda: float = 5e-6,  # best between 1e-6 and 1e-5
+        init_mean: float = 0.999,  # initial proportion with non-zero weights, set near 0
+        temperature: float = 0.5,  # usual values .5 to 3
+        regularize: Optional[bool] = False,
     ):
         """Initialize the Calibration class.
 
@@ -42,6 +46,10 @@ class Calibration:
             excluded_targets (Optional[List]): Optional List of targets to exclude from calibration. Defaults to None.
             csv_path (str): Optional path to save performance logs as CSV. Defaults to None.
             device (str): Optional device to run the calibration on. Defaults to None, which will use CUDA if available, otherwise MPS, otherwise CPU.
+            l0_lambda (float): Regularization parameter for L0 regularization. Defaults to 5e-6.
+            init_mean (float): Initial mean for L0 regularization, representing the initial proportion of non-zero weights. Defaults to 0.999.
+            temperature (float): Temperature parameter for L0 regularization, controlling the sparsity of the model. Defaults to 0.5.
+            regularize (Optional[bool]): Whether to apply L0 regularization. Defaults to False.
         """
         if device is not None:
             self.device = torch.device(device)
@@ -51,6 +59,7 @@ class Calibration:
                 if torch.cuda.is_available()
                 else "mps" if torch.mps.is_available() else "cpu"
             )
+
         self.original_estimate_matrix = estimate_matrix
         self.original_targets = targets
         self.original_target_names = target_names
@@ -64,6 +73,11 @@ class Calibration:
         self.normalization_factor = normalization_factor
         self.csv_path = csv_path
         self.performance_df = None
+        self.sparse_weights = None
+        self.l0_lambda = l0_lambda
+        self.init_mean = init_mean
+        self.temperature = temperature
+        self.regularize = regularize
 
         self.estimate_matrix = None
         self.targets = None
@@ -120,7 +134,7 @@ class Calibration:
 
         from .reweight import reweight
 
-        new_weights, self.performance_df = reweight(
+        new_weights, sparse_weights, self.performance_df = reweight(
             original_weights=self.weights,
             estimate_function=self.estimate_function,
             targets_array=self.targets,
@@ -134,9 +148,14 @@ class Calibration:
             excluded_target_data=self.excluded_target_data,
             csv_path=self.csv_path,
             device=self.device,
+            l0_lambda=self.l0_lambda,
+            init_mean=self.init_mean,
+            temperature=self.temperature,
+            regularize=self.regularize,
         )
 
         self.weights = new_weights
+        self.sparse_weights = sparse_weights
 
         return self.performance_df
 
@@ -330,13 +349,11 @@ class Calibration:
             if estimate_matrix is not None:
                 # Check if estimate_matrix is a tensor or DataFrame
                 if hasattr(estimate_matrix, "iloc"):
-                    # It's a DataFrame
                     contributing_mask = estimate_matrix.iloc[:, i] != 0
                     contribution_ratio = (
                         contributing_mask.sum() / estimate_matrix.shape[0]
                     )
                 else:
-                    # It's a tensor
                     contributing_mask = estimate_matrix[:, i] != 0
                     contribution_ratio = (
                         contributing_mask.sum().item()
