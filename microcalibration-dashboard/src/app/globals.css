@@ -1,15 +1,26 @@
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&display=swap');
 @import "tailwindcss";
 
-/* Apply JetBrains Mono everywhere */
+/* Apply Roboto Serif as default font */
 * {
-  font-family: 'JetBrains Mono', 'Courier New', monospace;
+  font-family: var(--font-roboto-serif), serif;
+}
+
+/* Apply Roboto Mono to results elements */
+.font-mono,
+.results-text,
+[class*="metric"],
+[class*="value"],
+[class*="number"],
+code,
+pre,
+.data-cell {
+  font-family: var(--font-roboto-mono), monospace !important;
 }
 
 /* Base page styling */
 body {
   background: #f8fafc;   /* slate-50 */
   color: #334155;        /* slate-700 */
-  font-family: 'JetBrains Mono', 'Courier New', monospace;
+  font-family: var(--font-roboto-serif), serif;
   line-height: 1.5;
 }
