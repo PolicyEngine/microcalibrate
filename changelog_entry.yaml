@@ -1,5 +1,0 @@
-- bump: minor
-  changes:
-    added:
-    - Adding analytical assessment of targets to Calibration class.
-    - Enhance dashboard to show all targets even if not overlapping and better font / table view.

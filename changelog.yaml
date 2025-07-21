@@ -111,3 +111,10 @@
     added:
     - Add excluded_targets logic to handle holdout targets.
   date: 2025-07-15 10:32:10
+- bump: minor
+  changes:
+    added:
+    - Adding analytical assessment of targets to Calibration class.
+    - Enhance dashboard to show all targets even if not overlapping and better font
+      / table view.
+  date: 2025-07-21 16:09:24
