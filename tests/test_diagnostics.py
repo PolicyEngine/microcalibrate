@@ -110,8 +110,8 @@ def test_calibration_analytical_solution(caplog) -> None:
     )
     targets = np.array(
         [
-            (targets_matrix["income_aged_20_30"] * weights).sum(),
-            (targets_matrix["income_aged_40_50"] * weights).sum(),
+            (targets_matrix["income_aged_20_30"] * weights).sum() * 2,
+            (targets_matrix["income_aged_40_50"] * weights).sum() * 2,
         ]
     )
 
@@ -125,11 +125,12 @@ def test_calibration_analytical_solution(caplog) -> None:
         dropout_rate=0,
     )
 
-    with caplog.at_level(logging.INFO, logger="microcalibrate.calibration"):
-        calibrator.assess_analytical_solution()
+    analytical_assessment = calibrator.assess_analytical_solution()
 
-    log_text = "\n".join(record.getMessage() for record in caplog.records)
+    assert set(analytical_assessment["target_added"]) == set(
+        list(targets_matrix.columns)
+    ), "Not all targets were added to the assessment."
 
     assert (
-        "Change in loss:" in log_text
-    ), "Analytical solution diagnostics not reported."
+        analytical_assessment["loss"].all() != 0
+    ), "Loss values should not be zero."

@@ -363,14 +363,15 @@ class Calibration:
                 "Estimate matrix is not provided. Cannot assess analytical solution from the estimate function alone."
             )
 
-        if logger.level != logging.INFO:
-            previous_level = logger.level
-            logger.setLevel(logging.INFO)
-
         def _get_linear_loss(metrics_matrix, target_vector, sparse=False):
             """Gets the mean squared error loss of X.T @ w wrt y for least squares solution"""
             X = metrics_matrix
             y = target_vector
+            normalization_factor = (
+                self.normalization_factor
+                if self.normalization_factor is not None
+                else 1
+            )
             if not sparse:
                 X_inv_mp = np.linalg.pinv(X)  # Moore-Penrose inverse
                 w_mp = X_inv_mp.T @ y
@@ -387,13 +388,13 @@ class Calibration:
                 w_sparse = result[0]
                 y_hat = X_sparse.T @ w_sparse
 
-            return round(np.mean((y - y_hat) ** 2), 3)  # mostly for display
+            return np.mean(((y - y_hat) ** 2) * normalization_factor)
 
         X = self.original_estimate_matrix.values
         y = self.targets
 
+        results = []
         slices = []
-        iterative_losses = []
         idx_dict = {
             self.original_estimate_matrix.columns.to_list()[i]: i
             for i in range(len(self.original_estimate_matrix.columns))
@@ -407,12 +408,17 @@ class Calibration:
         for target_name, index_list in idx_dict.items():
             slices.append(index_list)
             loss = _get_linear_loss(X[:, slices], y[slices], use_sparse)
-            iterative_losses.append(loss)
-            logger.info(
-                f"Adding: {target_name} to the above, Loss: {loss}, Change in loss: {iterative_losses[-1] - iterative_losses[-2] if len(iterative_losses) > 1 else 'N/A'}"
+            delta = loss - results[-1]["loss"] if results else None
+
+            results.append(
+                {
+                    "target_added": target_name,
+                    "loss": loss,
+                    "delta_loss": delta,
+                }
             )
 
-        logger.setLevel(previous_level)
+        return pd.DataFrame(results)
 
     def summary(
         self,
