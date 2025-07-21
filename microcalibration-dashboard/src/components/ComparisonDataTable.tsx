@@ -327,8 +327,9 @@ export default function ComparisonDataTable({
             <span className="text-sm text-gray-700 font-medium">{secondName}</span>
           </div>
         </div>
-        <div className="text-xs text-gray-500">
-          💡 Click the ▲▼ arrows next to column headers to sort. Target name sorts alphabetically, A/B arrows under &quot;Rel abs error %&quot; sort by dataset performance.
+        <div className="text-xs text-gray-500 space-y-1">
+          <div>💡 Click the ▲▼ arrows next to column headers to sort. Target name sorts alphabetically, A/B arrows under &quot;Rel abs error %&quot; sort by dataset performance.</div>
+          <div>* indicates targets that exist in only one dataset (hover for details)</div>
         </div>
       </div>
 
@@ -394,13 +395,29 @@ export default function ComparisonDataTable({
               <tr key={`${row.targetName}-${row.epoch}-${i}`} className="border-b border-gray-200 hover:bg-gray-50">
                 <td className="py-3 px-4 text-gray-900" title={row.targetName}>
                   <div 
-                    className="overflow-x-auto whitespace-nowrap [&::-webkit-scrollbar]:hidden" 
+                    className="overflow-x-auto whitespace-nowrap [&::-webkit-scrollbar]:hidden flex items-center gap-1" 
                     style={{ 
                       scrollbarWidth: 'none', 
                       msOverflowStyle: 'none',
                     }}
                   >
-                    {row.targetName}
+                    <span>{row.targetName}</span>
+                    {!row.first && row.second && (
+                      <span 
+                        className="text-purple-500 text-xs cursor-help" 
+                        title={`Only in ${secondName}`}
+                      >
+                        *
+                      </span>
+                    )}
+                    {row.first && !row.second && (
+                      <span 
+                        className="text-blue-500 text-xs cursor-help" 
+                        title={`Only in ${firstName}`}
+                      >
+                        *
+                      </span>
+                    )}
                   </div>
                 </td>
                 
