@@ -348,6 +348,78 @@ class Calibration:
                         f"of records in the loss matrix. This may make calibration unstable or ineffective."
                     )
 
+    def assess_analytical_solution(
+        self, use_sparse: Optional[bool] = False
+    ) -> None:
+        """Assess analytically which targets complicate achieving calibration accuracy as an optimization problem.
+
+        Uses the Moore-Penrose inverse for least squares solution to relax the assumption that weights need be positive and measure by how much loss increases when trying to solve for a set of equations (the more targets, the larger the number of equations, the harder the optimization problem).
+
+        Args:
+            use_sparse (bool): Whether to use sparse matrix methods for the analytical solution. Defaults to False.
+        """
+        if self.estimate_matrix is None:
+            raise ValueError(
+                "Estimate matrix is not provided. Cannot assess analytical solution from the estimate function alone."
+            )
+
+        def _get_linear_loss(metrics_matrix, target_vector, sparse=False):
+            """Gets the mean squared error loss of X.T @ w wrt y for least squares solution"""
+            X = metrics_matrix
+            y = target_vector
+            normalization_factor = (
+                self.normalization_factor
+                if self.normalization_factor is not None
+                else 1
+            )
+            if not sparse:
+                X_inv_mp = np.linalg.pinv(X)  # Moore-Penrose inverse
+                w_mp = X_inv_mp.T @ y
+                y_hat = X.T @ w_mp
+
+            else:
+                from scipy.sparse import csr_matrix
+                from scipy.sparse.linalg import lsqr
+
+                X_sparse = csr_matrix(X)
+                result = lsqr(
+                    X_sparse.T, y
+                )  # iterative method for sparse matrices
+                w_sparse = result[0]
+                y_hat = X_sparse.T @ w_sparse
+
+            return np.mean(((y - y_hat) ** 2) * normalization_factor)
+
+        X = self.original_estimate_matrix.values
+        y = self.targets
+
+        results = []
+        slices = []
+        idx_dict = {
+            self.original_estimate_matrix.columns.to_list()[i]: i
+            for i in range(len(self.original_estimate_matrix.columns))
+        }
+
+        logger.info(
+            "Assessing analytical solution to the optimization problem for each target... \n"
+            "This evaluates how much each target complicates achieving calibration accuracy. The loss reported is the mean squared error of the least squares solution."
+        )
+
+        for target_name, index_list in idx_dict.items():
+            slices.append(index_list)
+            loss = _get_linear_loss(X[:, slices], y[slices], use_sparse)
+            delta = loss - results[-1]["loss"] if results else None
+
+            results.append(
+                {
+                    "target_added": target_name,
+                    "loss": loss,
+                    "delta_loss": delta,
+                }
+            )
+
+        return pd.DataFrame(results)
+
     def summary(
         self,
     ) -> str:
