@@ -38,12 +38,12 @@ export default function TargetConvergenceComparison({
   firstName, 
   secondName 
 }: TargetConvergenceComparisonProps) {
-  // Find overlapping targets
+  // Find all targets (union of both datasets)
   const firstTargets = new Set(firstData.map(d => d.target_name));
   const secondTargets = new Set(secondData.map(d => d.target_name));
-  const commonTargets = sortTargetNames(Array.from(firstTargets).filter(target => secondTargets.has(target)));
+  const allTargets = sortTargetNames(Array.from(new Set([...firstTargets, ...secondTargets])));
 
-  const [selectedTarget, setSelectedTarget] = useState<string>(commonTargets[0] || '');
+  const [selectedTarget, setSelectedTarget] = useState<string>(allTargets[0] || '');
   const [targetSearchQuery, setTargetSearchQuery] = useState<string>('');
   const [showTargetDropdown, setShowTargetDropdown] = useState<boolean>(false);
   const [lineOpacity, setLineOpacity] = useState({
@@ -73,14 +73,14 @@ export default function TargetConvergenceComparison({
     }
 
     // No need to set default targets anymore - handled by search/pagination
-  }, [firstData, secondData, commonTargets, selectedEpoch]);
+  }, [firstData, secondData, allTargets, selectedEpoch]);
 
   // Reset page when search changes
   useEffect(() => {
     setCurrentPage(0);
   }, [searchQuery]);
 
-  if (commonTargets.length === 0) {
+  if (allTargets.length === 0) {
     return (
       <div className="bg-white border border-gray-300 p-6 rounded-lg shadow-sm">
         <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center">
@@ -89,7 +89,7 @@ export default function TargetConvergenceComparison({
         </h2>
         <div className="bg-yellow-50 border border-yellow-200 rounded p-4">
           <p className="text-yellow-800">
-            No common targets found between datasets for convergence comparison.
+            No targets found in either dataset for convergence comparison.
           </p>
         </div>
       </div>
@@ -131,7 +131,7 @@ export default function TargetConvergenceComparison({
 
   // Filter targets based on search query for target selection dropdown
   const searchFilteredTargets = sortTargetsWithRelevance(
-    commonTargets.filter(target =>
+    allTargets.filter(target =>
       target.toLowerCase().includes(targetSearchQuery.toLowerCase())
     ),
     targetSearchQuery
@@ -142,7 +142,7 @@ export default function TargetConvergenceComparison({
 
   // Filter and paginate targets based on search
   const getFilteredTargets = () => {
-    const filtered = commonTargets.filter(target => 
+    const filtered = allTargets.filter(target => 
       target.toLowerCase().includes(searchQuery.toLowerCase())
     );
     return sortTargetsWithRelevance(filtered, searchQuery);
@@ -338,8 +338,24 @@ export default function TargetConvergenceComparison({
               className="w-full border border-gray-300 rounded-md px-3 py-1 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
             {selectedTarget && (
-              <div className="mt-1 text-xs text-gray-600 truncate" title={selectedTarget}>
-                Selected: {selectedTarget}
+              <div className="mt-1 text-xs text-gray-600 truncate flex items-center gap-1" title={selectedTarget}>
+                <span>Selected: {selectedTarget}</span>
+                {!firstTargets.has(selectedTarget) && secondTargets.has(selectedTarget) && (
+                  <span 
+                    className="text-purple-500 cursor-help" 
+                    title={`Only in ${secondName}`}
+                  >
+                    *
+                  </span>
+                )}
+                {firstTargets.has(selectedTarget) && !secondTargets.has(selectedTarget) && (
+                  <span 
+                    className="text-blue-500 cursor-help" 
+                    title={`Only in ${firstName}`}
+                  >
+                    *
+                  </span>
+                )}
               </div>
             )}
             
@@ -359,7 +375,25 @@ export default function TargetConvergenceComparison({
                     }`}
                     title={target}
                   >
-                    <div className="truncate">{target}</div>
+                    <div className="truncate flex items-center gap-1">
+                      <span>{target}</span>
+                      {!firstTargets.has(target) && secondTargets.has(target) && (
+                        <span 
+                          className="text-purple-500 text-xs cursor-help" 
+                          title={`Only in ${secondName}`}
+                        >
+                          *
+                        </span>
+                      )}
+                      {firstTargets.has(target) && !secondTargets.has(target) && (
+                        <span 
+                          className="text-blue-500 text-xs cursor-help" 
+                          title={`Only in ${firstName}`}
+                        >
+                          *
+                        </span>
+                      )}
+                    </div>
                   </div>
                 ))}
                 {searchFilteredTargets.length > 10 && (
@@ -370,6 +404,13 @@ export default function TargetConvergenceComparison({
               </div>
             )}
           </div>
+        </div>
+      </div>
+
+      {/* Legend for asterisks */}
+      <div className="mb-4">
+        <div className="text-xs text-gray-500">
+          * indicates targets that exist in only one dataset (hover for details)
         </div>
       </div>
 

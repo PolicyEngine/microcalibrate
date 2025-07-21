@@ -13,6 +13,7 @@ import ComparisonQualitySummary from '@/components/ComparisonQualitySummary';
 import RegressionAnalysis from '@/components/RegressionAnalysis';
 import TargetConvergenceComparison from '@/components/TargetConvergenceComparison';
 import DataTable from '@/components/DataTable';
+import ComparisonDataTable from '@/components/ComparisonDataTable';
 import { CalibrationDataPoint } from '@/types/calibration';
 import { parseCalibrationCSV } from '@/utils/csvParser';
 import { getCurrentDeeplinkParams, generateShareableUrl, DeeplinkParams } from '@/utils/deeplinks';
@@ -241,6 +242,12 @@ export default function Dashboard() {
                       secondName={secondFilename} 
                     />
                     <TargetConvergenceComparison 
+                      firstData={data} 
+                      secondData={secondData} 
+                      firstName={filename} 
+                      secondName={secondFilename} 
+                    />
+                    <ComparisonDataTable 
                       firstData={data} 
                       secondData={secondData} 
                       firstName={filename} 
