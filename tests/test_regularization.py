@@ -2,7 +2,8 @@
 Test the calibration process with L0 regularization.
 """
 
-from src.microcalibrate.calibration import Calibration
+from microcalibrate.calibration import Calibration
+from microcalibrate.utils.l0 import evaluate_sparse_weights
 import logging
 import numpy as np
 import pandas as pd
@@ -70,6 +71,12 @@ def test_calibration_with_l0_regularization() -> None:
     performance_df = calibrator.calibrate()
     weights = calibrator.weights
     sparse_weights = calibrator.sparse_weights
+
+    percentage_within_10 = evaluate_sparse_weights(
+        optimised_weights=sparse_weights,
+        estimate_matrix=targets_matrix,
+        targets_array=targets,
+    )
 
     sparse_calibration_log = pd.read_csv(
         str(calibrator.csv_path).replace(".csv", "_sparse.csv")
