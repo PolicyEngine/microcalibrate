@@ -40,26 +40,20 @@ def evaluate_estimate_distance_to_targets(
     within_tolerance = distances <= tolerances
 
     evals = {
-        "target_names": target_names if target_names is not None else [],
+        "target_names": (
+            target_names
+            if target_names is not None
+            else list(np.nan for _ in targets)
+        ),
         "distances": distances,
         "tolerances": tolerances,
         "within_tolerance": within_tolerance,
     }
 
-    if target_names is not None:
-        for i, target in enumerate(evals["within_tolerance"]):
-            if not target:
-                logger.warning(
-                    f"The estimate corresponding to {evals['target_names'][i]} is outside the tolerance had an error {evals['distances'][i]} larger than the tolerance {evals['tolerances'][i]}."
-                )
-        if raise_on_error:
-            raise ValueError(
-                f"{(~within_tolerance).sum()} targets are outside their tolerance levels."
-            )
-    else:
-        if raise_on_error:
-            raise ValueError(
-                f"{(~within_tolerance).sum()} targets are outside their tolerance levels."
-            )
+    num_outside_tolerance = (~within_tolerance).sum()
+    if raise_on_error and num_outside_tolerance > 0:
+        raise ValueError(
+            f"{num_outside_tolerance} target(s) are outside their tolerance levels."
+        )
 
     return pd.DataFrame(evals)

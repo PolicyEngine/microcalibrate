@@ -83,7 +83,9 @@ def test_evaluate_estimate_distance_to_targets() -> None:
             raise_on_error=True,
         )
 
-    assert "targets are outside their tolerance levels" in str(exc_info.value)
+    assert "target(s) are outside their tolerance levels" in str(
+        exc_info.value
+    )
 
 
 def test_all_within_tolerance():
