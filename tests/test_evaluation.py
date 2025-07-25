@@ -4,7 +4,7 @@ Test the evaluation functionality for the calibration process.
 
 import pytest
 from src.microcalibrate.calibration import Calibration
-from src.microcalibrate.evalutation import (
+from microcalibrate.evaluation import (
     evaluate_estimate_distance_to_targets,
 )
 import numpy as np
@@ -12,7 +12,7 @@ import pandas as pd
 
 
 def test_evaluate_estimate_distance_to_targets() -> None:
-    """Test the evaluation of estimates against targets with tolerances."""
+    """Test the evaluation of estimates against targets with tolerances, for a case in which estimates are not within tolerance."""
 
     # Create a mock dataset with age and income
     random_generator = np.random.default_rng(0)
@@ -84,3 +84,21 @@ def test_evaluate_estimate_distance_to_targets() -> None:
         )
 
     assert "targets are outside their tolerance levels" in str(exc_info.value)
+
+
+def test_all_within_tolerance():
+    """Tests a simple case where all estimates are within their tolerances."""
+    targets = np.array([10, 20, 30])
+    estimates = np.array([10.1, 19.8, 30.0])
+    tolerances = np.array([0.2, 0.3, 0.1])
+    target_names = ["A", "B", "C"]
+
+    result_df = evaluate_estimate_distance_to_targets(
+        targets, estimates, tolerances, target_names
+    )
+
+    assert result_df["within_tolerance"].all()
+    assert result_df.shape == (3, 4)
+    np.testing.assert_array_almost_equal(
+        result_df["distances"], [0.1, 0.2, 0.0]
+    )
