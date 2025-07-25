@@ -123,3 +123,8 @@
     added:
     - L0 regularization logic.
   date: 2025-07-25 13:26:12
+- bump: minor
+  changes:
+    added:
+    - A function to evaluate whether estimates are within desired tolerance levels.
+  date: 2025-07-25 14:42:01

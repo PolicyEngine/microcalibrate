@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), 
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.18.0] - 2025-07-25 14:42:01
+
+### Added
+
+- A function to evaluate whether estimates are within desired tolerance levels.
+
 ## [0.17.0] - 2025-07-25 13:26:12
 
 ### Added
@@ -154,6 +160,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+[0.18.0]: https://github.com/PolicyEngine/microcalibrate/compare/0.17.0...0.18.0
 [0.17.0]: https://github.com/PolicyEngine/microcalibrate/compare/0.16.0...0.17.0
 [0.16.0]: https://github.com/PolicyEngine/microcalibrate/compare/0.15.0...0.16.0
 [0.15.0]: https://github.com/PolicyEngine/microcalibrate/compare/0.14.1...0.15.0
