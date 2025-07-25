@@ -118,3 +118,8 @@
     - Enhance dashboard to show all targets even if not overlapping and better font
       / table view.
   date: 2025-07-21 16:09:24
+- bump: minor
+  changes:
+    added:
+    - L0 regularization logic.
+  date: 2025-07-25 13:26:12

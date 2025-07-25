@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), 
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.17.0] - 2025-07-25 13:26:12
+
+### Added
+
+- L0 regularization logic.
+
 ## [0.16.0] - 2025-07-21 16:09:24
 
 ### Added
@@ -148,6 +154,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+[0.17.0]: https://github.com/PolicyEngine/microcalibrate/compare/0.16.0...0.17.0
 [0.16.0]: https://github.com/PolicyEngine/microcalibrate/compare/0.15.0...0.16.0
 [0.15.0]: https://github.com/PolicyEngine/microcalibrate/compare/0.14.1...0.15.0
 [0.14.1]: https://github.com/PolicyEngine/microcalibrate/compare/0.14.0...0.14.1
