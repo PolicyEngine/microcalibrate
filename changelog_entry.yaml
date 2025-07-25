@@ -1,0 +1,4 @@
+- bump: minor
+  changes:
+    added:
+    - L0 regularization logic.
