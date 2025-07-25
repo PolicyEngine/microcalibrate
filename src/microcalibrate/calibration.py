@@ -20,7 +20,7 @@ class Calibration:
         epochs: Optional[int] = 32,
         noise_level: Optional[float] = 10.0,
         learning_rate: Optional[float] = 1e-3,
-        dropout_rate: Optional[float] = 0.1,
+        dropout_rate: Optional[float] = 0,  # default to no dropout for now
         normalization_factor: Optional[torch.Tensor] = None,
         excluded_targets: Optional[List[str]] = None,
         csv_path: Optional[str] = None,
@@ -28,7 +28,7 @@ class Calibration:
         l0_lambda: float = 5e-6,  # best between 1e-6 and 1e-5
         init_mean: float = 0.999,  # initial proportion with non-zero weights, set near 0
         temperature: float = 0.5,  # usual values .5 to 3
-        regularize: Optional[bool] = False,
+        regularize_with_l0: Optional[bool] = False,
     ):
         """Initialize the Calibration class.
 
@@ -49,7 +49,7 @@ class Calibration:
             l0_lambda (float): Regularization parameter for L0 regularization. Defaults to 5e-6.
             init_mean (float): Initial mean for L0 regularization, representing the initial proportion of non-zero weights. Defaults to 0.999.
             temperature (float): Temperature parameter for L0 regularization, controlling the sparsity of the model. Defaults to 0.5.
-            regularize (Optional[bool]): Whether to apply L0 regularization. Defaults to False.
+            regularize_with_l0 (Optional[bool]): Whether to apply L0 regularization. Defaults to False.
         """
         if device is not None:
             self.device = torch.device(device)
@@ -77,7 +77,7 @@ class Calibration:
         self.l0_lambda = l0_lambda
         self.init_mean = init_mean
         self.temperature = temperature
-        self.regularize = regularize
+        self.regularize_with_l0 = regularize_with_l0
 
         self.estimate_matrix = None
         self.targets = None
@@ -151,7 +151,7 @@ class Calibration:
             l0_lambda=self.l0_lambda,
             init_mean=self.init_mean,
             temperature=self.temperature,
-            regularize=self.regularize,
+            regularize_with_l0=self.regularize_with_l0,
         )
 
         self.weights = new_weights

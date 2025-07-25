@@ -24,7 +24,7 @@ def reweight(
     l0_lambda: float,
     init_mean: float,
     temperature: float,
-    regularize: bool,
+    regularize_with_l0: bool,
     dropout_rate: Optional[float] = 0.05,
     epochs: Optional[int] = 2_000,
     noise_level: Optional[float] = 10.0,
@@ -45,7 +45,7 @@ def reweight(
         l0_lambda (float): Regularization parameter for L0 regularization.
         init_mean (float): Initial mean for L0 regularization, representing the initial proportion of non-zero weights.
         temperature (float): Temperature parameter for L0 regularization, controlling the sparsity of the model.
-        regularize (bool): Whether to apply L0 regularization.
+        regularize_with_l0 (bool): Whether to apply L0 regularization.
         dropout_rate (float): Optional probability of dropping weights during training.
         epochs (int): Optional number of epochs for training.
         noise_level (float): Optional level of noise to add to the original weights.
@@ -184,7 +184,7 @@ def reweight(
 
     final_weights = torch.exp(weights_).detach().cpu().numpy()
 
-    if regularize:
+    if regularize_with_l0:
         logger.info("Applying L0 regularization to the weights.")
 
         # Sparse, regularized weights depending on temperature, init_mean, l0_lambda -----

@@ -63,7 +63,7 @@ def test_calibration_with_l0_regularization() -> None:
         epochs=128,
         learning_rate=0.01,
         dropout_rate=0,
-        regularize=True,
+        regularize_with_l0=True,
         csv_path="tests/calibration_log.csv",
     )
 
