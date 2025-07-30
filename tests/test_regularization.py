@@ -169,12 +169,12 @@ def test_l0_hyperparameter_tuning() -> None:
 
     # Test hyperparameter tuning
     best_params = calibrator.tune_hyperparameters(
-        n_trials=10,  # Fewer trials for testing
+        n_trials=20,  # Fewer trials for testing
         epochs_per_trial=50,  # Shorter epochs for quick testing
         objectives_balance={
             "loss": 1.0,
             "accuracy": 100.0,  # Prioritize hitting targets
-            "sparsity": 10.0,
+            "sparsity": 30.0,
         },
         n_jobs=1,
     )
