@@ -1,10 +1,10 @@
 import logging
-from typing import Callable, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 import numpy as np
+import optuna
 import pandas as pd
 import torch
-from torch import Tensor
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +16,9 @@ class Calibration:
         targets: np.ndarray,
         target_names: Optional[np.ndarray] = None,
         estimate_matrix: Optional[pd.DataFrame] = None,
-        estimate_function: Optional[Callable[[Tensor], Tensor]] = None,
+        estimate_function: Optional[
+            Callable[[torch.Tensor], torch.Tensor]
+        ] = None,
         epochs: Optional[int] = 32,
         noise_level: Optional[float] = 10.0,
         learning_rate: Optional[float] = 1e-3,
@@ -37,7 +39,7 @@ class Calibration:
             targets (np.ndarray): Array of target values.
             target_names (Optional[np.ndarray]): Optional names of the targets for logging. Defaults to None. You MUST pass these names if you are not passing in an estimate matrix, and just passing in an estimate function.
             estimate_matrix (pd.DataFrame): DataFrame containing the estimate matrix.
-            estimate_function (Optional[Callable[[Tensor], Tensor]]): Function to estimate targets from weights. Defaults to None, in which case it will use the estimate_matrix.
+            estimate_function (Optional[Callable[[torch.Tensor], torch.Tensor]]): Function to estimate targets from weights. Defaults to None, in which case it will use the estimate_matrix.
             epochs (int): Optional number of epochs for calibration. Defaults to 32.
             noise_level (float): Optional level of noise to add to weights. Defaults to 10.0.
             learning_rate (float): Optional learning rate for the optimizer. Defaults to 1e-3.
@@ -78,6 +80,7 @@ class Calibration:
         self.init_mean = init_mean
         self.temperature = temperature
         self.regularize_with_l0 = regularize_with_l0
+        self.seed = 42
 
         self.estimate_matrix = None
         self.targets = None
@@ -263,13 +266,13 @@ class Calibration:
         self.targets = targets_array
         self.target_names = target_names
 
-    def estimate(self) -> pd.Series:
+    def estimate(self, weights: Optional[np.ndarray] = None) -> pd.Series:
+        if weights is None:
+            weights = self.weights
         return pd.Series(
             index=self.target_names,
             data=self.estimate_function(
-                torch.tensor(
-                    self.weights, dtype=torch.float32, device=self.device
-                )
+                torch.tensor(weights, dtype=torch.float32, device=self.device)
             )
             .cpu()
             .detach()
@@ -278,7 +281,7 @@ class Calibration:
 
     def _assess_targets(
         self,
-        estimate_function: Callable[[Tensor], Tensor],
+        estimate_function: Callable[[torch.Tensor], torch.Tensor],
         estimate_matrix: Optional[pd.DataFrame],
         weights: np.ndarray,
         targets: np.ndarray,
@@ -287,7 +290,7 @@ class Calibration:
         """Assess the targets to ensure they do not violate basic requirements like compatibility, correct order of magnitude, etc.
 
         Args:
-            estimate_function (Callable[[Tensor], Tensor]): Function to estimate the targets from weights.
+            estimate_function (Callable[[torch.Tensor], torch.Tensor]): Function to estimate the targets from weights.
             estimate_matrix (Optional[pd.DataFrame]): DataFrame containing the estimate matrix. Defaults to None.
             weights (np.ndarray): Array of original weights.
             targets (np.ndarray): Array of target values.
@@ -463,3 +466,205 @@ class Calibration:
         ) / df["Official target"]
         df = df.reset_index(drop=True)
         return df
+
+    def tune_hyperparameters(
+        self,
+        n_trials: int = 30,
+        objectives_balance: Optional[Dict[str, float]] = {
+            "loss": 1.0,
+            "accuracy": 100.0,
+            "sparsity": 10.0,
+        },
+        epochs_per_trial: Optional[int] = None,
+        timeout: Optional[float] = None,
+        n_jobs: int = 1,
+        study_name: Optional[str] = None,
+        storage: Optional[str] = None,
+        load_if_exists: bool = False,
+        direction: str = "minimize",
+        sampler: Optional["optuna.samplers.BaseSampler"] = None,
+        pruner: Optional["optuna.pruners.BasePruner"] = None,
+    ) -> Dict[str, Any]:
+        """
+        Tune hyperparameters for L0 regularization using Optuna.
+
+        This method optimizes l0_lambda, init_mean, and temperature to achieve:
+        1. Low calibration loss
+        2. High percentage of targets within 10% of their true values
+        3. Sparse weights (fewer non-zero weights)
+
+        Args:
+            n_trials: Number of optimization trials to run.
+            epochs_per_trial: Number of epochs per trial. If None, uses self.epochs // 4.
+            objectives_balance: Dictionary to balance the importance of loss, accuracy, and sparsity in the objective function. Default prioritizes being within 10% of targets.
+            timeout: Stop study after this many seconds. None means no timeout.
+            n_jobs: Number of parallel jobs. -1 means using all processors.
+            study_name: Name of the study for storage.
+            storage: Database URL for distributed optimization.
+            load_if_exists: Whether to load existing study.
+            direction: Optimization direction ('minimize' or 'maximize').
+            sampler: Optuna sampler for hyperparameter suggestions.
+            pruner: Optuna pruner for early stopping of trials.
+
+        Returns:
+            Dictionary containing the best hyperparameters found.
+        """
+        # Suppress Optuna's logs during optimization
+        optuna.logging.set_verbosity(optuna.logging.WARNING)
+
+        if epochs_per_trial is None:
+            epochs_per_trial = max(self.epochs // 4, 100)
+
+        logger.info(
+            f"Starting hyperparameter tuning with {n_trials} trials, "
+            f"{epochs_per_trial} epochs per trial"
+        )
+
+        def objective(
+            trial: optuna.Trial,
+            objectives_balance: Dict[str, float] = objectives_balance,
+        ) -> float:
+            """Objective function for Optuna optimization."""
+            try:
+                # Suggest hyperparameters
+                l0_lambda = trial.suggest_float(
+                    "l0_lambda", 1e-6, 1e-4, log=True
+                )
+                init_mean = trial.suggest_float("init_mean", 0.5, 0.999)
+                temperature = trial.suggest_float("temperature", 0.5, 2.0)
+
+                # Store original parameters
+                original_l0_lambda = self.l0_lambda
+                original_init_mean = self.init_mean
+                original_temperature = self.temperature
+                original_regularize = self.regularize_with_l0
+                original_epochs = self.epochs
+
+                # Update parameters for this trial
+                self.l0_lambda = l0_lambda
+                self.init_mean = init_mean
+                self.temperature = temperature
+                self.regularize_with_l0 = True
+                self.epochs = epochs_per_trial
+
+                # Run calibration with current hyperparameters
+                performance_df = self.calibrate()
+                sparse_weights = self.sparse_weights
+
+                # Calculate metrics for objective
+                if sparse_weights is not None:
+                    final_estimates = self.estimate(sparse_weights)
+
+                    targets_tensor = torch.tensor(
+                        self.targets, dtype=torch.float32, device=self.device
+                    )
+                    estimates_tensor = torch.tensor(
+                        final_estimates,
+                        dtype=torch.float32,
+                        device=self.device,
+                    )
+
+                    from .utils.metrics import loss, pct_close
+
+                    within_10_pct = pct_close(estimates_tensor, targets_tensor)
+                    final_loss = loss(
+                        estimates_tensor,
+                        targets_tensor,
+                        self.normalization_factor,
+                    )
+
+                    sparsity = np.mean(sparse_weights == 0)
+
+                    # Combined objective: minimize loss while maximizing sparsity and percentage within 10%
+                    # We weight these components to balance their importance
+                    objective_value = (
+                        final_loss * objectives_balance["loss"]
+                        + (1 - within_10_pct) * objectives_balance["accuracy"]
+                        + (1 - sparsity) * objectives_balance["sparsity"]
+                    )
+
+                    # Report intermediate values for multi-objective optimization
+                    trial.set_user_attr("final_loss", final_loss)
+                    trial.set_user_attr("within_10_pct", within_10_pct)
+                    trial.set_user_attr("sparsity", sparsity)
+                    trial.set_user_attr(
+                        "n_nonzero_weights", int(np.sum(sparse_weights != 0))
+                    )
+
+                    # Log progress
+                    if trial.number % 5 == 0:
+                        logger.info(
+                            f"Trial {trial.number}: loss={final_loss:.6f}, "
+                            f"within_10%={within_10_pct:.2%}, "
+                            f"sparsity={sparsity:.2%}, "
+                            f"objective={objective_value:.6f}"
+                        )
+
+            except Exception as e:
+                logger.warning(f"Trial {trial.number} failed: {str(e)}")
+                objective_value = 1e10
+
+            finally:
+                # Restore original parameters
+                self.l0_lambda = original_l0_lambda
+                self.init_mean = original_init_mean
+                self.temperature = original_temperature
+                self.regularize_with_l0 = original_regularize
+                self.epochs = original_epochs
+
+            return objective_value
+
+        # Create or load study
+        if sampler is None:
+            sampler = optuna.samplers.TPESampler(seed=self.seed)
+
+        study = optuna.create_study(
+            study_name=study_name,
+            storage=storage,
+            load_if_exists=load_if_exists,
+            direction=direction,
+            sampler=sampler,
+            pruner=pruner,
+        )
+
+        # Run optimization
+        study.optimize(
+            objective,
+            n_trials=n_trials,
+            timeout=timeout,
+            n_jobs=n_jobs,
+            show_progress_bar=True,
+        )
+
+        # Get best parameters
+        best_params = study.best_params
+        best_value = study.best_value
+
+        # Add additional metrics from the best trial
+        best_trial = study.best_trial
+        best_params["final_loss"] = best_trial.user_attrs.get(
+            "final_loss", None
+        )
+        best_params["within_10_pct"] = best_trial.user_attrs.get(
+            "within_10_pct", None
+        )
+        best_params["sparsity"] = best_trial.user_attrs.get("sparsity", None)
+        best_params["n_nonzero_weights"] = best_trial.user_attrs.get(
+            "n_nonzero_weights", None
+        )
+
+        logger.info(
+            f"\nHyperparameter tuning completed!"
+            f"\nBest objective value: {best_value:.6f}"
+            f"\nBest parameters:"
+            f"\n  - l0_lambda: {best_params['l0_lambda']:.2e}"
+            f"\n  - init_mean: {best_params['init_mean']:.4f}"
+            f"\n  - temperature: {best_params['temperature']:.4f}"
+            f"\nBest trial metrics:"
+            f"\n  - Final loss: {best_params['final_loss']:.6f}"
+            f"\n  - Within 10% of targets: {best_params['within_10_pct']:.2%}"
+            f"\n  - Sparsity: {best_params['sparsity']:.2%}"
+            f"\n  - Non-zero weights: {best_params['n_nonzero_weights']:,} / {len(self.weights):,}"
+        )
+
+        return best_params
