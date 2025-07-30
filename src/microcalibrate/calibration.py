@@ -31,6 +31,7 @@ class Calibration:
         init_mean: float = 0.999,  # initial proportion with non-zero weights, set near 0
         temperature: float = 0.5,  # usual values .5 to 3
         regularize_with_l0: Optional[bool] = False,
+        seed: Optional[int] = 42,
     ):
         """Initialize the Calibration class.
 
@@ -52,16 +53,8 @@ class Calibration:
             init_mean (float): Initial mean for L0 regularization, representing the initial proportion of non-zero weights. Defaults to 0.999.
             temperature (float): Temperature parameter for L0 regularization, controlling the sparsity of the model. Defaults to 0.5.
             regularize_with_l0 (Optional[bool]): Whether to apply L0 regularization. Defaults to False.
+            seed (Optional[int]): Random seed for reproducibility. Defaults to 42.
         """
-        if device is not None:
-            self.device = torch.device(device)
-        else:
-            self.device = torch.device(
-                "cuda"
-                if torch.cuda.is_available()
-                else "mps" if torch.mps.is_available() else "cpu"
-            )
-
         self.original_estimate_matrix = estimate_matrix
         self.original_targets = targets
         self.original_target_names = target_names
@@ -80,7 +73,18 @@ class Calibration:
         self.init_mean = init_mean
         self.temperature = temperature
         self.regularize_with_l0 = regularize_with_l0
-        self.seed = 42
+        self.seed = seed
+
+        if device is not None:
+            self.device = torch.device(device)
+            torch.manual_seed(self.seed)
+        else:
+            self.device = torch.device(
+                "cuda"
+                if torch.cuda.is_available()
+                else "mps" if torch.mps.is_available() else "cpu"
+            )
+            torch.cuda.manual_seed(self.seed)
 
         self.estimate_matrix = None
         self.targets = None
