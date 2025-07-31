@@ -657,9 +657,7 @@ class Calibration:
                 self.excluded_targets = original_state["excluded_targets"]
                 self.targets = original_state["targets"]
                 self.target_names = original_state["target_names"]
-
-                if self.excluded_targets is not None:
-                    self.exclude_targets()
+                self.exclude_targets()
 
         # Create or load study
         if sampler is None:

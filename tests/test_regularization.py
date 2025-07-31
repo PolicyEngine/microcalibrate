@@ -185,14 +185,16 @@ def test_l0_hyperparameter_tuning() -> None:
     assert (
         "temperature" in best_params
     ), "Missing temperature in best parameters"
-    assert "final_loss" in best_params, "Missing final_loss in best parameters"
     assert (
-        "within_10_pct" in best_params
-    ), "Missing within_10_pct in best parameters"
+        "mean_val_loss" in best_params
+    ), "Missing mean_val_loss in best parameters"
+    assert (
+        "mean_val_accuracy" in best_params
+    ), "Missing mean_val_accuracy in best parameters"
     assert "sparsity" in best_params, "Missing sparsity in best parameters"
     assert (
-        "n_nonzero_weights" in best_params
-    ), "Missing n_nonzero_weights in best parameters"
+        "holdout_objectives" in best_params
+    ), "Missing holdout_objectives in best parameters"
 
     # Verify parameter ranges
     assert (
@@ -207,14 +209,14 @@ def test_l0_hyperparameter_tuning() -> None:
 
     # Verify metrics are reasonable
     assert (
-        0 <= best_params["within_10_pct"] <= 1
-    ), "within_10_pct should be between 0 and 1"
+        0 <= best_params["mean_val_accuracy"] <= 1
+    ), "mean_val_accuracy should be between 0 and 1"
     assert (
         0 <= best_params["sparsity"] <= 1
     ), "sparsity should be between 0 and 1"
-    assert best_params["n_nonzero_weights"] <= len(
-        weights
-    ), "n_nonzero_weights exceeds total weights"
+    assert (
+        best_params["mean_val_loss"] >= 0
+    ), "mean_val_loss should be non-negative"
 
     # Now run calibration with the best parameters
     calibrator.l0_lambda = best_params["l0_lambda"]

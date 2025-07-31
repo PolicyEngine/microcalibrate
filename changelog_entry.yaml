@@ -1,4 +1,4 @@
 - bump: minor
   changes:
     added:
-    - Add hyperparameter tuning for L0 implementation.
+    - Add hyperparameter tuning for L0 implementation with option to holdout targets.
