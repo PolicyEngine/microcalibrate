@@ -561,6 +561,9 @@ class Calibration:
             ),
         }
 
+        # Initialize list to collect all holdout evaluations
+        all_evaluations = []
+
         def objective(
             trial: optuna.Trial,
             objectives_balance: Dict[str, float] = objectives_balance,
@@ -587,6 +590,11 @@ class Calibration:
                         epochs_per_trial=epochs_per_trial,
                         objectives_balance=objectives_balance,
                     )
+                    # Add trial and holdout identifiers for tracking
+                    evaluation_record = result.copy()
+                    evaluation_record["trial_number"] = trial.number
+                    evaluation_record["holdout_set_idx"] = holdout_idx
+                    all_evaluations.append(evaluation_record)
                     holdout_results.append(result)
 
                 # Aggregate objectives
@@ -701,6 +709,17 @@ class Calibration:
         best_params["n_holdout_sets"] = n_holdout_sets
         best_params["aggregation"] = aggregation
 
+        # Create evaluation tracking dataframe
+        evaluation_df = pd.DataFrame(all_evaluations)
+
+        # Convert holdout_targets list to string for easier viewing
+        if "holdout_targets" in evaluation_df.columns:
+            evaluation_df["holdout_targets"] = evaluation_df[
+                "holdout_targets"
+            ].apply(lambda x: ", ".join(x) if isinstance(x, list) else str(x))
+
+        best_params["evaluation_history"] = evaluation_df
+
         logger.info(
             f"\nMulti-holdout tuning completed!"
             f"\nBest parameters:"
@@ -712,6 +731,7 @@ class Calibration:
             f"\n  - Mean val accuracy: {best_params['mean_val_accuracy']:.2%} (±{best_params['std_val_accuracy']:.2%})"
             f"\n  - Individual objectives: {[f'{obj:.4f}' for obj in best_params['holdout_objectives']]}"
             f"\n  - Sparsity: {best_params['sparsity']:.2%}"
+            f"\n\nEvaluation history saved with {len(evaluation_df)} records across {n_trials} trials."
         )
 
         return best_params
@@ -757,7 +777,7 @@ class Calibration:
         hyperparameters: Dict[str, float],
         epochs_per_trial: int,
         objectives_balance: Dict[str, float],
-    ) -> Dict[str, float]:
+    ) -> Dict[str, Any]:
         """Evaluate hyperparameters on a single holdout set.
 
         Args:
@@ -767,7 +787,7 @@ class Calibration:
             objectives_balance: Weights for different objectives
 
         Returns:
-            Dictionary with evaluation metrics
+            Dictionary with evaluation metrics and holdout target names
         """
         # Store original parameters
         original_params = {
@@ -791,7 +811,7 @@ class Calibration:
             self.exclude_targets()
 
             # Run calibration
-            performance_df = self.calibrate()
+            self.calibrate()
             sparse_weights = self.sparse_weights
 
             # Get estimates for all targets
@@ -885,6 +905,8 @@ class Calibration:
                 "train_accuracy": train_accuracy,
                 "sparsity": sparsity,
                 "n_nonzero_weights": int(np.sum(sparse_weights != 0)),
+                "holdout_targets": holdout_set["names"],
+                "hyperparameters": hyperparameters.copy(),
             }
 
         finally:

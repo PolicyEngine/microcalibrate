@@ -7,10 +7,12 @@ from microcalibrate.utils.l0 import evaluate_sparse_weights
 import logging
 import numpy as np
 import pandas as pd
+import pytest
 
 
-def test_calibration_with_l0_regularization() -> None:
-    # Create a sample dataset for testing
+@pytest.fixture(scope="session")
+def test_data():
+    """Create sample dataset and targets for L0 hyperparameter tuning tests."""
     random_generator = np.random.default_rng(0)
     data = pd.DataFrame(
         {
@@ -21,7 +23,6 @@ def test_calibration_with_l0_regularization() -> None:
 
     weights = np.ones(len(data))
 
-    # Calculate target values:
     targets_matrix = pd.DataFrame(
         {
             "income_aged_20_30": (
@@ -55,6 +56,19 @@ def test_calibration_with_l0_regularization() -> None:
             (targets_matrix["income_aged_60_70"] * weights).sum() * 1.2,
         ]
     )
+
+    return {
+        "targets_matrix": targets_matrix,
+        "weights": weights,
+        "targets": targets,
+    }
+
+
+def test_calibration_with_l0_regularization(test_data) -> None:
+    "Test calibration with L0 regularization."
+    targets_matrix = test_data["targets_matrix"]
+    weights = test_data["weights"]
+    targets = test_data["targets"]
 
     calibrator = Calibration(
         estimate_matrix=targets_matrix,
@@ -108,53 +122,11 @@ def test_calibration_with_l0_regularization() -> None:
     ), f"Only {percentage_below_threshold:.1f}% of sparse weights are below 0.5 (expected > 10%)"
 
 
-def test_l0_hyperparameter_tuning_with_holdouts() -> None:
+def test_l0_hyperparameter_tuning_with_holdouts(test_data) -> None:
     """Test L0 hyperparameter tuning with holdout validation."""
-    # Create a sample dataset for testing
-    random_generator = np.random.default_rng(0)
-    data = pd.DataFrame(
-        {
-            "age": np.append(random_generator.integers(18, 70, size=500), 71),
-            "income": random_generator.normal(40000, 10000, size=501),
-        }
-    )
-
-    weights = np.ones(len(data))
-
-    # Calculate target values:
-    targets_matrix = pd.DataFrame(
-        {
-            "income_aged_20_30": (
-                (data["age"] >= 20) & (data["age"] < 30)
-            ).astype(float)
-            * data["income"],
-            "income_aged_30_40": (
-                (data["age"] >= 30) & (data["age"] < 40)
-            ).astype(float)
-            * data["income"],
-            "income_aged_40_50": (
-                (data["age"] >= 40) & (data["age"] < 50)
-            ).astype(float)
-            * data["income"],
-            "income_aged_50_60": (
-                (data["age"] >= 50) & (data["age"] < 60)
-            ).astype(float)
-            * data["income"],
-            "income_aged_60_70": (
-                (data["age"] >= 60) & (data["age"] <= 70)
-            ).astype(float)
-            * data["income"],
-        }
-    )
-    targets = np.array(
-        [
-            (targets_matrix["income_aged_20_30"] * weights).sum() * 1.2,
-            (targets_matrix["income_aged_30_40"] * weights).sum() * 1.3,
-            (targets_matrix["income_aged_40_50"] * weights).sum() * 0.9,
-            (targets_matrix["income_aged_50_60"] * weights).sum() * 1.5,
-            (targets_matrix["income_aged_60_70"] * weights).sum() * 1.2,
-        ]
-    )
+    targets_matrix = test_data["targets_matrix"]
+    weights = test_data["weights"]
+    targets = test_data["targets"]
 
     # Create calibrator instance
     calibrator = Calibration(
@@ -219,6 +191,10 @@ def test_l0_hyperparameter_tuning_with_holdouts() -> None:
         best_params["mean_val_loss"] >= 0
     ), "mean_val_loss should be non-negative"
 
+    best_params["evaluation_history"].to_csv(
+        "tests/l0_hyperparameter_tuning_history_with_holdouts.csv", index=False
+    )
+
     # Now run calibration with the best parameters
     calibrator.l0_lambda = best_params["l0_lambda"]
     calibrator.init_mean = best_params["init_mean"]
@@ -252,53 +228,11 @@ def test_l0_hyperparameter_tuning_with_holdouts() -> None:
     ), f"Sparsity {actual_sparsity:.1%} is too low (expected > 10%)"
 
 
-def test_l0_hyperparameter_tuning_without_holdouts() -> None:
+def test_l0_hyperparameter_tuning_without_holdouts(test_data) -> None:
     """Test L0 hyperparameter tuning without holdout validation (simpler case)."""
-    # Create a sample dataset for testing
-    random_generator = np.random.default_rng(0)
-    data = pd.DataFrame(
-        {
-            "age": np.append(random_generator.integers(18, 70, size=500), 71),
-            "income": random_generator.normal(40000, 10000, size=501),
-        }
-    )
-
-    weights = np.ones(len(data))
-
-    # Calculate target values:
-    targets_matrix = pd.DataFrame(
-        {
-            "income_aged_20_30": (
-                (data["age"] >= 20) & (data["age"] < 30)
-            ).astype(float)
-            * data["income"],
-            "income_aged_30_40": (
-                (data["age"] >= 30) & (data["age"] < 40)
-            ).astype(float)
-            * data["income"],
-            "income_aged_40_50": (
-                (data["age"] >= 40) & (data["age"] < 50)
-            ).astype(float)
-            * data["income"],
-            "income_aged_50_60": (
-                (data["age"] >= 50) & (data["age"] < 60)
-            ).astype(float)
-            * data["income"],
-            "income_aged_60_70": (
-                (data["age"] >= 60) & (data["age"] <= 70)
-            ).astype(float)
-            * data["income"],
-        }
-    )
-    targets = np.array(
-        [
-            (targets_matrix["income_aged_20_30"] * weights).sum() * 1.2,
-            (targets_matrix["income_aged_30_40"] * weights).sum() * 1.3,
-            (targets_matrix["income_aged_40_50"] * weights).sum() * 0.9,
-            (targets_matrix["income_aged_50_60"] * weights).sum() * 1.5,
-            (targets_matrix["income_aged_60_70"] * weights).sum() * 1.2,
-        ]
-    )
+    targets_matrix = test_data["targets_matrix"]
+    weights = test_data["weights"]
+    targets = test_data["targets"]
 
     # Create calibrator instance
     calibrator = Calibration(
@@ -370,6 +304,11 @@ def test_l0_hyperparameter_tuning_without_holdouts() -> None:
     assert (
         len(best_params["holdout_objectives"]) == 1
     ), "Should have exactly 1 objective"
+
+    best_params["evaluation_history"].to_csv(
+        "tests/l0_hyperparameter_tuning_history_without_holdouts.csv",
+        index=False,
+    )
 
     # Run calibration with the best parameters
     calibrator.l0_lambda = best_params["l0_lambda"]
