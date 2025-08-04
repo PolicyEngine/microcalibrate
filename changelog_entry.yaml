@@ -1,0 +1,5 @@
+- bump: minor
+  changes:
+    added:
+    - Adding column to sort by calibration difference to dashboard comparisons page.
+    - Ensure pagination so all repo branches are visible in the github loading.
