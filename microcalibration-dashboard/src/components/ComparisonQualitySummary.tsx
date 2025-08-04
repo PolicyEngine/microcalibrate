@@ -120,11 +120,11 @@ export default function ComparisonQualitySummary({
   let qualityIcon: React.ReactNode;
   
   if (overallQualityChange > 0.1) {
-    qualityAssessment = "Significantly Better";
+    qualityAssessment = "Improved";
     qualityColor = "green";
     qualityIcon = <TrendingUp className="w-6 h-6" />;
   } else if (overallQualityChange < -0.1) {
-    qualityAssessment = "Significantly worse";
+    qualityAssessment = "Worsened";
     qualityColor = "red";
     qualityIcon = <TrendingDown className="w-6 h-6" />;
   } else {
@@ -145,7 +145,7 @@ export default function ComparisonQualitySummary({
       </p>
 
       {/* Overall Quality Assessment */}
-      <div className={`mb-6 bg-${qualityColor}-50 border-2 border-${qualityColor}-200 rounded-lg p-6`}>
+      <div className={`mb-6 border-2 border-${qualityColor}-500 rounded-lg p-6`}>
         <div className="text-center">
           <div className={`flex items-center justify-center mb-2 text-${qualityColor}-600`}>
             {qualityIcon}

@@ -568,28 +568,56 @@ export default function FileUpload({
     setError('');
 
     try {
-      // Use authenticated requests to avoid rate limiting
-      const response = await fetch(`https://api.github.com/repos/${githubRepo}/branches`, {
-        headers: {
-          'Authorization': `Bearer ${githubToken}`,
-          'Accept': 'application/vnd.github.v3+json',
-          'User-Agent': 'PolicyEngine-Dashboard/1.0'
+      // Fetch all branches with pagination support
+      const allBranches: GitHubBranch[] = [];
+      let page = 1;
+      const perPage = 100; // Maximum allowed by GitHub API
+      
+      while (true) {
+        const response = await fetch(`https://api.github.com/repos/${githubRepo}/branches?per_page=${perPage}&page=${page}`, {
+          headers: {
+            'Authorization': `Bearer ${githubToken}`,
+            'Accept': 'application/vnd.github.v3+json',
+            'User-Agent': 'PolicyEngine-Dashboard/1.0'
+          }
+        });
+        
+        if (!response.ok) {
+          if (response.status === 404) {
+            throw new Error('Repository not found. Please check the repository name and ensure it is accessible.');
+          } else if (response.status === 403) {
+            throw new Error('Access forbidden. Please check your GitHub token permissions or repository access.');
+          }
+          throw new Error(`Failed to fetch branches: ${response.status} ${response.statusText}`);
         }
-      });
-      if (!response.ok) {
-        if (response.status === 404) {
-          throw new Error('Repository not found. Please check the repository name and ensure it is accessible.');
-        } else if (response.status === 403) {
-          throw new Error('Access forbidden. Please check your GitHub token permissions or repository access.');
+
+        const branches: GitHubBranch[] = await response.json();
+        
+        if (branches.length === 0) {
+          // No more branches to fetch
+          break;
         }
-        throw new Error(`Failed to fetch branches: ${response.status} ${response.statusText}`);
+        
+        allBranches.push(...branches);
+        
+        // If we got fewer branches than requested, we've reached the end
+        if (branches.length < perPage) {
+          break;
+        }
+        
+        page++;
+        
+        // Safety check to prevent infinite loops (GitHub repos rarely have more than 1000 branches)
+        if (page > 10) {
+          console.warn('Stopped fetching branches after 10 pages (1000 branches) to prevent excessive API calls');
+          break;
+        }
       }
 
-      const branches: GitHubBranch[] = await response.json();
-      setGithubBranches(branches);
+      setGithubBranches(allBranches);
       
       // Auto-select main/master branch if available
-      const defaultBranch = branches.find(b => b.name === 'main' || b.name === 'master');
+      const defaultBranch = allBranches.find(b => b.name === 'main' || b.name === 'master');
       if (defaultBranch) {
         setSelectedBranch(defaultBranch.name);
         await fetchGithubCommits(defaultBranch.name);

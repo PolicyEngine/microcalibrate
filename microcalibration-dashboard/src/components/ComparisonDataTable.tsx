@@ -18,7 +18,7 @@ interface ComparisonRow {
   second?: CalibrationDataPoint;
 }
 
-type SortField = keyof CalibrationDataPoint | 'random';
+type SortField = keyof CalibrationDataPoint | 'random' | 'difference';
 type SortDataset = 'first' | 'second' | null;
 type SortDirection = 'asc' | 'desc';
 
@@ -97,6 +97,29 @@ export default function ComparisonDataTable({
         return sortDirection === 'asc' ? result : -result;
       }
 
+      if (sortField === 'difference') {
+        // Calculate differences for sorting
+        const aDiff = (a.first?.rel_abs_error !== undefined && a.second?.rel_abs_error !== undefined) 
+          ? a.second.rel_abs_error - a.first.rel_abs_error 
+          : null;
+        const bDiff = (b.first?.rel_abs_error !== undefined && b.second?.rel_abs_error !== undefined) 
+          ? b.second.rel_abs_error - b.first.rel_abs_error 
+          : null;
+        
+        // Handle undefined/null values - put them at the end regardless of sort direction
+        if (aDiff === null && bDiff === null) {
+          return 0;
+        }
+        if (aDiff === null) {
+          return 1;
+        }
+        if (bDiff === null) {
+          return -1;
+        }
+        
+        return sortDirection === 'asc' ? aDiff - bDiff : bDiff - aDiff;
+      }
+
       // Sort by values based on selected dataset
       let aVal, bVal;
       if (sortDataset === 'first') {
@@ -150,15 +173,15 @@ export default function ComparisonDataTable({
 
   const totalPages = Math.ceil(sortedData.length / itemsPerPage);
 
-  const handleSort = (field: keyof CalibrationDataPoint, dataset?: 'first' | 'second') => {
-    // For target_name, don't use dataset-specific sorting
-    if (field === 'target_name') {
+  const handleSort = (field: keyof CalibrationDataPoint | 'difference', dataset?: 'first' | 'second') => {
+    // For target_name and difference, don't use dataset-specific sorting
+    if (field === 'target_name' || field === 'difference') {
       if (sortField === field && sortDataset === null) {
         setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
       } else {
         setSortField(field);
         setSortDataset(null);
-        setSortDirection('asc');
+        setSortDirection(field === 'difference' ? 'desc' : 'asc'); // Start with desc for difference to show biggest improvements first
       }
       return;
     }
@@ -176,11 +199,11 @@ export default function ComparisonDataTable({
   };
 
   const SortButton = ({ field, children, dataset }: { 
-    field: keyof CalibrationDataPoint, 
+    field: keyof CalibrationDataPoint | 'difference', 
     children: React.ReactNode, 
     dataset?: 'first' | 'second'
   }) => {
-    const isActive = field === 'target_name' 
+    const isActive = (field === 'target_name' || field === 'difference') 
       ? (sortField === field && sortDataset === null)
       : (sortField === field && sortDataset === dataset);
     
@@ -283,6 +306,28 @@ export default function ComparisonDataTable({
     );
   };
 
+  const renderDifferenceCell = (firstValue: number | undefined | null, secondValue: number | undefined | null) => {
+    if (firstValue === undefined || firstValue === null || secondValue === undefined || secondValue === null) {
+      return <span className="text-gray-400 font-mono text-xs">—</span>;
+    }
+
+    const difference = secondValue - firstValue;
+    const percentageDiff = (difference * 100).toFixed(2);
+    const sign = difference > 0 ? '+' : '';
+    
+    // Color coding: negative difference (B better than A) = green, positive (B worse than A) = red
+    let colorClass = 'text-gray-600';
+    if (Math.abs(difference) > 0.001) { // Only color if difference is meaningful
+      colorClass = difference < 0 ? 'text-green-600' : 'text-red-600';
+    }
+
+    return (
+      <span className={`font-mono text-xs font-semibold ${colorClass}`} title={`B: ${(secondValue * 100).toFixed(2)}% - A: ${(firstValue * 100).toFixed(2)}% = ${sign}${percentageDiff}%`}>
+        {sign}{percentageDiff}%
+      </span>
+    );
+  };
+
   return (
     <div className="bg-white border border-gray-300 p-6 rounded-lg shadow-sm">
       <div className="flex justify-between items-center mb-4">
@@ -347,6 +392,7 @@ export default function ComparisonDataTable({
             <col className="w-20" />
             <col className="w-20" />
             <col className="w-20" />
+            <col className="w-24" />
           </colgroup>
           <thead>
             <tr className="border-b border-gray-300 bg-gray-50">
@@ -368,6 +414,9 @@ export default function ComparisonDataTable({
               <th className="text-center py-2 px-4 font-semibold text-gray-700 border-b border-gray-200" colSpan={2}>
                 Rel abs error %
               </th>
+              <th className="text-center py-2 px-4 font-semibold text-gray-700 border-b border-gray-200">
+                Difference
+              </th>
             </tr>
             <tr className="border-b border-gray-300 bg-gray-50">
               <th className="text-center py-2 px-2 text-xs font-medium text-blue-600">A</th>
@@ -387,6 +436,9 @@ export default function ComparisonDataTable({
                 <DatasetSortButton field="rel_abs_error" dataset="second">
                   B
                 </DatasetSortButton>
+              </th>
+              <th className="text-center py-2 px-5">
+                <SortButton field="difference">(B-A)</SortButton>
               </th>
             </tr>
           </thead>
@@ -459,6 +511,11 @@ export default function ComparisonDataTable({
                 </td>
                 <td className="py-3 px-2 text-right">
                   {renderDataCell(row.second?.rel_abs_error, false, true)}
+                </td>
+                
+                {/* Difference column */}
+                <td className="py-3 px-2 text-center">
+                  {renderDifferenceCell(row.first?.rel_abs_error, row.second?.rel_abs_error)}
                 </td>
               </tr>
             ))}
