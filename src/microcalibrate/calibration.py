@@ -564,6 +564,152 @@ class Calibration:
         # Initialize list to collect all holdout evaluations
         all_evaluations = []
 
+        def evaluate_single_holdout(
+            holdout_set: Dict[str, Any],
+            hyperparameters: Dict[str, float],
+            epochs_per_trial: int,
+            objectives_balance: Dict[str, float],
+        ) -> Dict[str, Any]:
+            """Evaluate hyperparameters on a single holdout set.
+
+            Args:
+                holdout_set: Dictionary with 'names' and 'indices' of holdout targets
+                hyperparameters: Dictionary with l0_lambda, init_mean, temperature
+                epochs_per_trial: Number of epochs to run
+                objectives_balance: Weights for different objectives
+
+            Returns:
+                Dictionary with evaluation metrics and holdout target names
+            """
+            # Store original parameters
+            original_params = {
+                "l0_lambda": self.l0_lambda,
+                "init_mean": self.init_mean,
+                "temperature": self.temperature,
+                "regularize_with_l0": self.regularize_with_l0,
+                "epochs": self.epochs,
+            }
+
+            try:
+                # Update parameters for this evaluation
+                self.l0_lambda = hyperparameters["l0_lambda"]
+                self.init_mean = hyperparameters["init_mean"]
+                self.temperature = hyperparameters["temperature"]
+                self.regularize_with_l0 = True
+                self.epochs = epochs_per_trial
+
+                # Set up calibration with this holdout set
+                self.excluded_targets = holdout_set["names"]
+                self.exclude_targets()
+
+                # Run calibration
+                self.calibrate()
+                sparse_weights = self.sparse_weights
+
+                # Get estimates for all targets
+                weights_tensor = torch.tensor(
+                    sparse_weights, dtype=torch.float32, device=self.device
+                )
+
+                if self.original_estimate_matrix is not None:
+                    original_matrix_tensor = torch.tensor(
+                        self.original_estimate_matrix.values,
+                        dtype=torch.float32,
+                        device=self.device,
+                    )
+                    all_estimates = (
+                        (weights_tensor @ original_matrix_tensor).cpu().numpy()
+                    )
+                else:
+                    all_estimates = (
+                        self.original_estimate_function(weights_tensor)
+                        .cpu()
+                        .numpy()
+                    )
+
+                # Split into train/validation
+                n_targets = len(self.original_target_names)
+                val_indices = holdout_set["indices"]
+                train_indices = [
+                    i for i in range(n_targets) if i not in val_indices
+                ]
+
+                val_estimates = all_estimates[val_indices]
+                val_targets = self.original_targets[val_indices]
+                train_estimates = all_estimates[train_indices]
+                train_targets = self.original_targets[train_indices]
+
+                # Calculate metrics
+                from .utils.metrics import loss, pct_close
+
+                val_loss = loss(
+                    torch.tensor(
+                        val_estimates, dtype=torch.float32, device=self.device
+                    ),
+                    torch.tensor(
+                        val_targets, dtype=torch.float32, device=self.device
+                    ),
+                    None,
+                ).item()
+
+                val_accuracy = pct_close(
+                    torch.tensor(
+                        val_estimates, dtype=torch.float32, device=self.device
+                    ),
+                    torch.tensor(
+                        val_targets, dtype=torch.float32, device=self.device
+                    ),
+                )
+
+                train_loss = loss(
+                    torch.tensor(
+                        train_estimates,
+                        dtype=torch.float32,
+                        device=self.device,
+                    ),
+                    torch.tensor(
+                        train_targets, dtype=torch.float32, device=self.device
+                    ),
+                    None,
+                ).item()
+
+                train_accuracy = pct_close(
+                    torch.tensor(
+                        train_estimates,
+                        dtype=torch.float32,
+                        device=self.device,
+                    ),
+                    torch.tensor(
+                        train_targets, dtype=torch.float32, device=self.device
+                    ),
+                )
+
+                sparsity = np.mean(sparse_weights == 0)
+
+                # Calculate objective
+                objective = (
+                    val_loss * objectives_balance["loss"]
+                    + (1 - val_accuracy) * objectives_balance["accuracy"]
+                    + (1 - sparsity) * objectives_balance["sparsity"]
+                )
+
+                return {
+                    "objective": objective,
+                    "val_loss": val_loss,
+                    "val_accuracy": val_accuracy,
+                    "train_loss": train_loss,
+                    "train_accuracy": train_accuracy,
+                    "sparsity": sparsity,
+                    "n_nonzero_weights": int(np.sum(sparse_weights != 0)),
+                    "holdout_targets": holdout_set["names"],
+                    "hyperparameters": hyperparameters.copy(),
+                }
+
+            finally:
+                # Restore original parameters
+                for key, value in original_params.items():
+                    setattr(self, key, value)
+
         def objective(
             trial: optuna.Trial,
             objectives_balance: Dict[str, float] = objectives_balance,
@@ -584,7 +730,7 @@ class Calibration:
                 # Evaluate on all holdout sets
                 holdout_results = []
                 for holdout_idx, holdout_set in enumerate(holdout_sets):
-                    result = self._evaluate_single_holdout(
+                    result = evaluate_single_holdout(
                         holdout_set=holdout_set,
                         hyperparameters=hyperparameters,
                         epochs_per_trial=epochs_per_trial,
@@ -598,9 +744,18 @@ class Calibration:
                     holdout_results.append(result)
 
                 # Aggregate objectives
-                final_objective = self._aggregate_holdout_results(
-                    holdout_results, aggregation
-                )
+                objectives = [r["objective"] for r in holdout_results]
+
+                if aggregation == "mean":
+                    final_objective = np.mean(objectives)
+                elif aggregation == "median":
+                    final_objective = np.median(objectives)
+                elif aggregation == "worst":
+                    final_objective = np.max(objectives)
+                else:
+                    raise ValueError(
+                        f"Unknown aggregation method: {aggregation}"
+                    )
 
                 # Store detailed metrics
                 trial.set_user_attr(
@@ -748,11 +903,12 @@ class Calibration:
             n_holdout_sets: Number of holdout sets to create
             holdout_fraction: Fraction of targets in each holdout set
             random_state: Base random seed for reproducibility
+            exclude_excluded: Whether to exclude already excluded targets from the holdout sets
 
         Returns:
             List of dictionaries containing holdout names and indices
         """
-        n_targets = len(self.original_target_names)
+        n_targets = len(self.target_names)
         n_holdout_targets = max(1, int(n_targets * holdout_fraction))
 
         holdout_sets = []
@@ -762,177 +918,482 @@ class Calibration:
             holdout_indices = set_rng.choice(
                 n_targets, size=n_holdout_targets, replace=False
             )
-            holdout_names = [
-                self.original_target_names[idx] for idx in holdout_indices
-            ]
+            holdout_names = [self.target_names[idx] for idx in holdout_indices]
             holdout_sets.append(
                 {"names": holdout_names, "indices": holdout_indices}
             )
 
         return holdout_sets
 
-    def _evaluate_single_holdout(
+    def evaluate_holdout_robustness(
         self,
-        holdout_set: Dict[str, Any],
-        hyperparameters: Dict[str, float],
-        epochs_per_trial: int,
-        objectives_balance: Dict[str, float],
+        n_holdout_sets: Optional[int] = 5,
+        holdout_fraction: Optional[float] = 0.2,
+        save_results_to: Optional[str] = None,
     ) -> Dict[str, Any]:
-        """Evaluate hyperparameters on a single holdout set.
+        """
+        Evaluate calibration robustness using holdout validation.
+
+        This function assesses how well the calibration generalizes by:
+        1. Repeatedly holding out random subsets of targets
+        2. Calibrating on the remaining targets
+        3. Evaluating performance on held-out targets
 
         Args:
-            holdout_set: Dictionary with 'names' and 'indices' of holdout targets
-            hyperparameters: Dictionary with l0_lambda, init_mean, temperature
-            epochs_per_trial: Number of epochs to run
-            objectives_balance: Weights for different objectives
+            n_holdout_sets (int): Number of different holdout sets to evaluate.
+            More sets provide better estimates but increase computation time.
+            holdout_fraction (float): Fraction of targets to hold out in each set.
+            save_results_to (str): Path to save detailed results as CSV. If None, no saving.
 
         Returns:
-            Dictionary with evaluation metrics and holdout target names
+            Dict[str, Any]: Dictionary containing:
+                - overall_metrics: Summary statistics across all holdouts
+                - target_robustness: DataFrame showing each target's performance when held out
+                - recommendation: String with interpretation and recommendations
+                - detailed_results: (if requested) List of detailed results per holdout
         """
-        # Store original parameters
-        original_params = {
-            "l0_lambda": self.l0_lambda,
-            "init_mean": self.init_mean,
-            "temperature": self.temperature,
-            "regularize_with_l0": self.regularize_with_l0,
-            "epochs": self.epochs,
+
+        logger.info(
+            f"Starting holdout robustness evaluation with {n_holdout_sets} sets, "
+            f"holding out {holdout_fraction:.1%} of targets each time."
+        )
+
+        # Store original state
+        original_state = {
+            "weights": self.weights.copy(),
+            "excluded_targets": (
+                self.excluded_targets.copy() if self.excluded_targets else None
+            ),
+            "targets": self.targets.copy(),
+            "target_names": (
+                self.target_names.copy()
+                if self.target_names is not None
+                else None
+            ),
+            "sparse_weights": (
+                self.sparse_weights.copy()
+                if self.sparse_weights is not None
+                else None
+            ),
         }
 
-        try:
-            # Update parameters for this evaluation
-            self.l0_lambda = hyperparameters["l0_lambda"]
-            self.init_mean = hyperparameters["init_mean"]
-            self.temperature = hyperparameters["temperature"]
-            self.regularize_with_l0 = True
-            self.epochs = epochs_per_trial
+        # Create holdout sets
+        holdout_sets = self._create_holdout_sets(
+            n_holdout_sets, holdout_fraction, self.seed + 1
+        )
 
-            # Set up calibration with this holdout set
-            self.excluded_targets = holdout_set["names"]
-            self.exclude_targets()
+        # Collect results
+        all_results = []
+        target_performance = {
+            name: {"held_out_losses": [], "held_out_accuracies": []}
+            for name in self.original_target_names
+        }
 
-            # Run calibration
-            self.calibrate()
-            sparse_weights = self.sparse_weights
+        def evaluate_single_holdout_robustness(
+            holdout_idx: int,
+        ) -> Dict[str, Any]:
+            """Evaluate a single holdout set."""
+            try:
+                holdout_set = holdout_sets[holdout_idx]
+                logger.info(
+                    f"Evaluating holdout set {holdout_idx + 1}/{n_holdout_sets}"
+                )
 
-            # Get estimates for all targets
-            weights_tensor = torch.tensor(
-                sparse_weights, dtype=torch.float32, device=self.device
+                # Reset to original state
+                self.weights = original_state["weights"].copy()
+                self.excluded_targets = holdout_set["names"]
+                self.exclude_targets()
+
+                # Run calibration on training targets
+                start_time = pd.Timestamp.now()
+                self.calibrate()
+                calibration_time = (
+                    pd.Timestamp.now() - start_time
+                ).total_seconds()
+
+                # Get final weights (sparse if using L0, otherwise regular)
+                final_weights = (
+                    self.sparse_weights
+                    if self.sparse_weights is not None
+                    else self.weights
+                )
+
+                # Evaluate on all targets
+                weights_tensor = torch.tensor(
+                    final_weights, dtype=torch.float32, device=self.device
+                )
+
+                # Get estimates for all targets using original estimate function/matrix
+                if self.original_estimate_matrix is not None:
+                    original_matrix_tensor = torch.tensor(
+                        self.original_estimate_matrix.values,
+                        dtype=torch.float32,
+                        device=self.device,
+                    )
+                    all_estimates = (
+                        (weights_tensor @ original_matrix_tensor).cpu().numpy()
+                    )
+                else:
+                    all_estimates = (
+                        self.original_estimate_function(weights_tensor)
+                        .cpu()
+                        .numpy()
+                    )
+
+                # Calculate metrics for holdout vs training sets
+                holdout_indices = holdout_set["indices"]
+                train_indices = [
+                    i
+                    for i in range(len(self.original_target_names))
+                    if i not in holdout_indices
+                ]
+
+                holdout_estimates = all_estimates[holdout_indices]
+                holdout_targets = self.original_targets[holdout_indices]
+                holdout_names = holdout_set["names"]
+
+                train_estimates = all_estimates[train_indices]
+                train_targets = self.original_targets[train_indices]
+
+                # Calculate losses and accuracies
+                from .utils.metrics import loss, pct_close
+
+                holdout_loss = loss(
+                    torch.tensor(
+                        holdout_estimates,
+                        dtype=torch.float32,
+                        device=self.device,
+                    ),
+                    torch.tensor(
+                        holdout_targets,
+                        dtype=torch.float32,
+                        device=self.device,
+                    ),
+                    None,
+                ).item()
+
+                holdout_accuracy = pct_close(
+                    torch.tensor(
+                        holdout_estimates,
+                        dtype=torch.float32,
+                        device=self.device,
+                    ),
+                    torch.tensor(
+                        holdout_targets,
+                        dtype=torch.float32,
+                        device=self.device,
+                    ),
+                )
+
+                train_loss = loss(
+                    torch.tensor(
+                        train_estimates,
+                        dtype=torch.float32,
+                        device=self.device,
+                    ),
+                    torch.tensor(
+                        train_targets, dtype=torch.float32, device=self.device
+                    ),
+                    None,
+                ).item()
+
+                train_accuracy = pct_close(
+                    torch.tensor(
+                        train_estimates,
+                        dtype=torch.float32,
+                        device=self.device,
+                    ),
+                    torch.tensor(
+                        train_targets, dtype=torch.float32, device=self.device
+                    ),
+                )
+
+                # Calculate per-target metrics for holdout targets
+                target_details = []
+                for idx, name in enumerate(holdout_names):
+                    rel_error = (
+                        holdout_estimates[idx] - holdout_targets[idx]
+                    ) / holdout_targets[idx]
+                    target_details.append(
+                        {
+                            "target_name": name,
+                            "target_value": holdout_targets[idx],
+                            "estimate": holdout_estimates[idx],
+                            "relative_error": rel_error,
+                            "within_10pct": abs(rel_error) <= 0.1,
+                        }
+                    )
+
+                    target_performance[name]["held_out_losses"].append(
+                        (holdout_estimates[idx] - holdout_targets[idx]) ** 2
+                    )
+                    target_performance[name]["held_out_accuracies"].append(
+                        abs(rel_error) <= 0.1
+                    )
+
+                generalization_gap = holdout_loss - train_loss
+                accuracy_gap = train_accuracy - holdout_accuracy
+
+                result = {
+                    "holdout_set_idx": holdout_idx,
+                    "n_holdout_targets": len(holdout_indices),
+                    "n_train_targets": len(train_indices),
+                    "holdout_loss": holdout_loss,
+                    "train_loss": train_loss,
+                    "generalization_gap": generalization_gap,
+                    "holdout_accuracy": holdout_accuracy,
+                    "train_accuracy": train_accuracy,
+                    "accuracy_gap": accuracy_gap,
+                    "calibration_time_seconds": calibration_time,
+                    "holdout_target_names": holdout_names,
+                    "target_details": target_details,
+                    "weights_sparsity": (
+                        np.mean(final_weights == 0)
+                        if self.sparse_weights is not None
+                        else 0
+                    ),
+                }
+
+                return result
+
+            except Exception as e:
+                logger.error(f"Error in holdout set {holdout_idx}: {str(e)}")
+                return None
+            finally:
+                # Restore original state
+                for key, value in original_state.items():
+                    if value is not None:
+                        setattr(
+                            self,
+                            key,
+                            value.copy() if hasattr(value, "copy") else value,
+                        )
+                if self.excluded_targets:
+                    self.exclude_targets()
+
+        for i in range(n_holdout_sets):
+            result = evaluate_single_holdout_robustness(i)
+            if result is not None:
+                all_results.append(result)
+
+        if not all_results:
+            raise ValueError("No successful holdout evaluations completed")
+
+        # Calculate overall metrics
+        holdout_losses = [r["holdout_loss"] for r in all_results]
+        holdout_accuracies = [r["holdout_accuracy"] for r in all_results]
+        train_losses = [r["train_loss"] for r in all_results]
+        train_accuracies = [r["train_accuracy"] for r in all_results]
+        generalization_gaps = [r["generalization_gap"] for r in all_results]
+
+        overall_metrics = {
+            "mean_holdout_loss": np.mean(holdout_losses),
+            "std_holdout_loss": np.std(holdout_losses),
+            "mean_holdout_accuracy": np.mean(holdout_accuracies),
+            "std_holdout_accuracy": np.std(holdout_accuracies),
+            "worst_holdout_accuracy": np.min(holdout_accuracies),
+            "best_holdout_accuracy": np.max(holdout_accuracies),
+            "mean_train_loss": np.mean(train_losses),
+            "mean_train_accuracy": np.mean(train_accuracies),
+            "mean_generalization_gap": np.mean(generalization_gaps),
+            "std_generalization_gap": np.std(generalization_gaps),
+            "n_successful_evaluations": len(all_results),
+            "n_failed_evaluations": n_holdout_sets - len(all_results),
+        }
+
+        target_robustness_data = []
+        for target_name in self.original_target_names:
+            perf = target_performance[target_name]
+            if perf[
+                "held_out_losses"
+            ]:  # Only include if target was held out at least once
+                target_robustness_data.append(
+                    {
+                        "target_name": target_name,
+                        "times_held_out": len(perf["held_out_losses"]),
+                        "mean_holdout_loss": np.mean(perf["held_out_losses"]),
+                        "std_holdout_loss": np.std(perf["held_out_losses"]),
+                        "holdout_accuracy_rate": np.mean(
+                            perf["held_out_accuracies"]
+                        ),
+                    }
+                )
+
+        target_robustness_df = pd.DataFrame(target_robustness_data)
+        target_robustness_df = target_robustness_df.sort_values(
+            "holdout_accuracy_rate", ascending=True
+        )
+
+        # Generate recommendations
+        recommendation = self._generate_robustness_recommendation(
+            overall_metrics, target_robustness_df
+        )
+
+        # Save results if requested
+        def save_holdout_results(
+            save_path: str,
+            overall_metrics: Dict[str, float],
+            target_robustness_df: pd.DataFrame,
+            detailed_results: List[Dict[str, Any]],
+        ) -> None:
+            """Save detailed holdout results to CSV files."""
+            from pathlib import Path
+
+            save_path = Path(save_path)
+            save_path.parent.mkdir(parents=True, exist_ok=True)
+
+            overall_df = pd.DataFrame([overall_metrics])
+            overall_path = save_path.with_name(f"{save_path.stem}_overall.csv")
+            overall_df.to_csv(overall_path, index=False)
+
+            robustness_path = save_path.with_name(
+                f"{save_path.stem}_target_robustness.csv"
+            )
+            target_robustness_df.to_csv(robustness_path, index=False)
+
+            detailed_data = []
+            for result in detailed_results:
+                for target_detail in result["target_details"]:
+                    detailed_data.append(
+                        {
+                            "holdout_set_idx": result["holdout_set_idx"],
+                            "target_name": target_detail["target_name"],
+                            "target_value": target_detail["target_value"],
+                            "estimate": target_detail["estimate"],
+                            "relative_error": target_detail["relative_error"],
+                            "within_10pct": target_detail["within_10pct"],
+                            "holdout_loss": result["holdout_loss"],
+                            "train_loss": result["train_loss"],
+                            "generalization_gap": result["generalization_gap"],
+                        }
+                    )
+
+            detailed_df = pd.DataFrame(detailed_data)
+            detailed_path = save_path.with_name(
+                f"{save_path.stem}_detailed.csv"
+            )
+            detailed_df.to_csv(detailed_path, index=False)
+
+        if save_results_to:
+            save_holdout_results(
+                save_results_to,
+                overall_metrics,
+                target_robustness_df,
+                all_results,
             )
 
-            if self.original_estimate_matrix is not None:
-                original_matrix_tensor = torch.tensor(
-                    self.original_estimate_matrix.values,
-                    dtype=torch.float32,
-                    device=self.device,
+        results = {
+            "overall_metrics": overall_metrics,
+            "target_robustness": target_robustness_df,
+            "recommendation": recommendation,
+            "detailed_results": all_results,
+        }
+
+        logger.info(
+            f"\nHoldout evaluation completed:"
+            f"\n  Mean holdout accuracy: {overall_metrics['mean_holdout_accuracy']:.2%} "
+            f"(±{overall_metrics['std_holdout_accuracy']:.2%})"
+            f"\n  Worst-case accuracy: {overall_metrics['worst_holdout_accuracy']:.2%}"
+            f"\n  Generalization gap: {overall_metrics['mean_generalization_gap']:.6f}"
+            f"\n  Least robust targets: {', '.join(target_robustness_df.head(5)['target_name'].tolist())}"
+        )
+
+        return results
+
+    def _generate_robustness_recommendation(
+        self,
+        overall_metrics: Dict[str, float],
+        target_robustness_df: pd.DataFrame,
+    ) -> str:
+        """Generate interpretation and recommendations based on robustness evaluation."""
+
+        mean_acc = overall_metrics["mean_holdout_accuracy"]
+        std_acc = overall_metrics["std_holdout_accuracy"]
+        worst_acc = overall_metrics["worst_holdout_accuracy"]
+        gen_gap = overall_metrics["mean_generalization_gap"]
+        problematic_targets = target_robustness_df[
+            target_robustness_df["holdout_accuracy_rate"] < 0.5
+        ]["target_name"].tolist()
+
+        rec_parts = []
+
+        # Overall assessment
+        if mean_acc >= 0.9 and std_acc <= 0.05:
+            rec_parts.append(
+                "✅ EXCELLENT ROBUSTNESS: The calibration generalizes very well."
+            )
+        elif mean_acc >= 0.8 and std_acc <= 0.1:
+            rec_parts.append(
+                "👍 GOOD ROBUSTNESS: The calibration shows good generalization."
+            )
+        elif mean_acc >= 0.7:
+            rec_parts.append(
+                "⚠️ MODERATE ROBUSTNESS: The calibration has decent but improvable generalization."
+            )
+        else:
+            rec_parts.append(
+                "❌ POOR ROBUSTNESS: The calibration shows weak generalization."
+            )
+
+        rec_parts.append(
+            f"\nOn average, {mean_acc:.1%} of held-out targets are within 10% of their true values."
+        )
+
+        # Stability assessment
+        if std_acc > 0.15:
+            rec_parts.append(
+                f"\n ⚠️ High variability (std={std_acc:.1%}) suggests instability across different target combinations."
+            )
+
+        # Worst-case analysis
+        if worst_acc < 0.5:
+            rec_parts.append(
+                f"\n ⚠️ Worst-case scenario: Only {worst_acc:.1%} accuracy in some holdout sets."
+            )
+
+        # Problematic targets
+        if problematic_targets:
+            rec_parts.append(
+                f"\n\n📊 Targets with poor holdout performance (<50% accuracy):"
+            )
+            for target in problematic_targets[:5]:
+                target_data = target_robustness_df[
+                    target_robustness_df["target_name"] == target
+                ].iloc[0]
+                rec_parts.append(
+                    f"\n  - {target}: {target_data['holdout_accuracy_rate']:.1%} accuracy"
                 )
-                all_estimates = (
-                    (weights_tensor @ original_matrix_tensor).cpu().numpy()
+
+        rec_parts.append("\n\n💡 RECOMMENDATIONS:")
+
+        if mean_acc < 0.8 or std_acc > 0.1:
+            if self.regularize_with_l0:
+                rec_parts.append(
+                    "\n  1. Consider tuning L0 regularization parameters with tune_hyperparameters()"
                 )
             else:
-                all_estimates = (
-                    self.original_estimate_function(weights_tensor)
-                    .cpu()
-                    .numpy()
+                rec_parts.append(
+                    "\n  1. Consider enabling L0 regularization for better generalization"
                 )
 
-            # Split into train/validation
-            n_targets = len(self.original_target_names)
-            val_indices = holdout_set["indices"]
-            train_indices = [
-                i for i in range(n_targets) if i not in val_indices
-            ]
-
-            val_estimates = all_estimates[val_indices]
-            val_targets = self.original_targets[val_indices]
-            train_estimates = all_estimates[train_indices]
-            train_targets = self.original_targets[train_indices]
-
-            # Calculate metrics
-            from .utils.metrics import loss, pct_close
-
-            val_loss = loss(
-                torch.tensor(
-                    val_estimates, dtype=torch.float32, device=self.device
-                ),
-                torch.tensor(
-                    val_targets, dtype=torch.float32, device=self.device
-                ),
-                None,
-            ).item()
-
-            val_accuracy = pct_close(
-                torch.tensor(
-                    val_estimates, dtype=torch.float32, device=self.device
-                ),
-                torch.tensor(
-                    val_targets, dtype=torch.float32, device=self.device
-                ),
+            rec_parts.append(
+                "\n  2. Increase the noise_level parameter to improve robustness"
+            )
+            rec_parts.append(
+                "\n  3. Try increasing dropout_rate to reduce overfitting"
             )
 
-            train_loss = loss(
-                torch.tensor(
-                    train_estimates, dtype=torch.float32, device=self.device
-                ),
-                torch.tensor(
-                    train_targets, dtype=torch.float32, device=self.device
-                ),
-                None,
-            ).item()
-
-            train_accuracy = pct_close(
-                torch.tensor(
-                    train_estimates, dtype=torch.float32, device=self.device
-                ),
-                torch.tensor(
-                    train_targets, dtype=torch.float32, device=self.device
-                ),
+        if problematic_targets:
+            rec_parts.append(
+                f"\n  4. Investigate why these targets are hard to predict: {', '.join(problematic_targets[:3])}"
+            )
+            rec_parts.append(
+                "\n  5. Consider if these targets have sufficient support in the microdata"
             )
 
-            sparsity = np.mean(sparse_weights == 0)
-
-            # Calculate objective
-            objective = (
-                val_loss * objectives_balance["loss"]
-                + (1 - val_accuracy) * objectives_balance["accuracy"]
-                + (1 - sparsity) * objectives_balance["sparsity"]
+        if gen_gap > 0.01:
+            rec_parts.append(
+                f"\n  6. Generalization gap of {gen_gap:.4f} suggests some overfitting - consider regularization"
             )
 
-            return {
-                "objective": objective,
-                "val_loss": val_loss,
-                "val_accuracy": val_accuracy,
-                "train_loss": train_loss,
-                "train_accuracy": train_accuracy,
-                "sparsity": sparsity,
-                "n_nonzero_weights": int(np.sum(sparse_weights != 0)),
-                "holdout_targets": holdout_set["names"],
-                "hyperparameters": hyperparameters.copy(),
-            }
-
-        finally:
-            # Restore original parameters
-            for key, value in original_params.items():
-                setattr(self, key, value)
-
-    def _aggregate_holdout_results(
-        self, results: List[Dict[str, float]], aggregation: str
-    ) -> float:
-        """Aggregate results across multiple holdout sets.
-
-        Args:
-            results: List of evaluation results from each holdout
-            aggregation: Method to aggregate ('mean', 'median', 'worst')
-
-        Returns:
-            Aggregated objective value
-        """
-        objectives = [r["objective"] for r in results]
-
-        if aggregation == "mean":
-            return np.mean(objectives)
-        elif aggregation == "median":
-            return np.median(objectives)
-        elif aggregation == "worst":
-            return np.max(objectives)
-        else:
-            raise ValueError(f"Unknown aggregation method: {aggregation}")
+        return "".join(rec_parts)
