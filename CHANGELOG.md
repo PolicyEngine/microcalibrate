@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), 
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.19.1] - 2025-08-11 15:25:07
+
+### Added
+
+- Added a parameter to adjust the learning rate of the sparse optimizer.
+- Fixed label in dashboard that incorrectly displayed 'estimate' instead of 'target'.
+
 ## [0.19.0] - 2025-08-04 15:53:14
 
 ### Added
@@ -167,6 +174,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+[0.19.1]: https://github.com/PolicyEngine/microcalibrate/compare/0.19.0...0.19.1
 [0.19.0]: https://github.com/PolicyEngine/microcalibrate/compare/0.18.0...0.19.0
 [0.18.0]: https://github.com/PolicyEngine/microcalibrate/compare/0.17.0...0.18.0
 [0.17.0]: https://github.com/PolicyEngine/microcalibrate/compare/0.16.0...0.17.0
