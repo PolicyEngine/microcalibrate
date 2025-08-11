@@ -27,6 +27,7 @@ class Calibration:
         device: str = "cpu",  # fix to cpu for now to avoid user device-specific issues
         l0_lambda: float = 5e-6,  # best between 1e-6 and 1e-5
         init_mean: float = 0.999,  # initial proportion with non-zero weights, set near 0
+        sparse_learning_rate: float = 0.2,
         temperature: float = 0.5,  # usual values .5 to 3
         regularize_with_l0: Optional[bool] = False,
     ):
@@ -49,6 +50,7 @@ class Calibration:
             l0_lambda (float): Regularization parameter for L0 regularization. Defaults to 5e-6.
             init_mean (float): Initial mean for L0 regularization, representing the initial proportion of non-zero weights. Defaults to 0.999.
             temperature (float): Temperature parameter for L0 regularization, controlling the sparsity of the model. Defaults to 0.5.
+            sparse_learning_rate (float): Learning rate for the regularizing optimizer. Defaults to 0.2.
             regularize_with_l0 (Optional[bool]): Whether to apply L0 regularization. Defaults to False.
         """
         if device is not None:
@@ -77,6 +79,7 @@ class Calibration:
         self.l0_lambda = l0_lambda
         self.init_mean = init_mean
         self.temperature = temperature
+        self.sparse_learning_rate = sparse_learning_rate
         self.regularize_with_l0 = regularize_with_l0
 
         self.estimate_matrix = None
@@ -151,6 +154,7 @@ class Calibration:
             l0_lambda=self.l0_lambda,
             init_mean=self.init_mean,
             temperature=self.temperature,
+            sparse_learning_rate=self.sparse_learning_rate,
             regularize_with_l0=self.regularize_with_l0,
         )
 

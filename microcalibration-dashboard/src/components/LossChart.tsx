@@ -179,7 +179,7 @@ export default function LossChart({ data }: LossChartProps) {
             <Tooltip 
               formatter={(value: number, name: string) => [
                 formatValue(value), 
-                name === 'target' ? 'Target' : 'Estimate'
+                name === 'Target' ? 'Target' : 'Estimate'
               ]}
               labelFormatter={(label) => `Epoch: ${label}`}
             />
