@@ -25,6 +25,7 @@ def reweight(
     init_mean: float,
     temperature: float,
     regularize_with_l0: bool,
+    sparse_learning_rate: Optional[float] = 0.2,
     dropout_rate: Optional[float] = 0.05,
     epochs: Optional[int] = 2_000,
     noise_level: Optional[float] = 10.0,
@@ -45,6 +46,7 @@ def reweight(
         l0_lambda (float): Regularization parameter for L0 regularization.
         init_mean (float): Initial mean for L0 regularization, representing the initial proportion of non-zero weights.
         temperature (float): Temperature parameter for L0 regularization, controlling the sparsity of the model.
+        sparse_learning_rate (float): Learning rate for the regularizing optimizer.
         regularize_with_l0 (bool): Whether to apply L0 regularization.
         dropout_rate (float): Optional probability of dropping weights during training.
         epochs (int): Optional number of epochs for training.
@@ -200,7 +202,7 @@ def reweight(
         # NOTE: Results are pretty sensitve to learning rates
         # optimizer breaks down somewhere near .005, does better at above .1
         optimizer = torch.optim.Adam(
-            [weights] + list(gates.parameters()), lr=0.2
+            [weights] + list(gates.parameters()), lr=sparse_learning_rate
         )
         start_loss = None
 

@@ -1,0 +1,5 @@
+- bump: patch
+  changes:
+    added:
+    - Added a parameter to adjust the learning rate of the sparse optimizer.
+    - Fixed label in dashboard that incorrectly displayed 'estimate' instead of 'target'.
