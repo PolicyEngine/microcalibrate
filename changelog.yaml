@@ -128,3 +128,9 @@
     added:
     - A function to evaluate whether estimates are within desired tolerance levels.
   date: 2025-07-25 14:42:01
+- bump: minor
+  changes:
+    added:
+    - Adding column to sort by calibration difference to dashboard comparisons page.
+    - Ensure pagination so all repo branches are visible in the github loading.
+  date: 2025-08-04 15:53:14
