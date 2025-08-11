@@ -30,6 +30,7 @@ class Calibration:
         l0_lambda: float = 5e-6,  # best between 1e-6 and 1e-5
         init_mean: float = 0.999,  # initial proportion with non-zero weights, set near 0
         temperature: float = 0.5,  # usual values .5 to 3
+        sparse_learning_rate: Optional[float] = 0.2,
         regularize_with_l0: Optional[bool] = False,
         seed: Optional[int] = 42,
     ):
@@ -72,6 +73,7 @@ class Calibration:
         self.l0_lambda = l0_lambda
         self.init_mean = init_mean
         self.temperature = temperature
+        self.sparse_learning_rate = sparse_learning_rate
         self.regularize_with_l0 = regularize_with_l0
         self.seed = seed
 
@@ -158,6 +160,7 @@ class Calibration:
             l0_lambda=self.l0_lambda,
             init_mean=self.init_mean,
             temperature=self.temperature,
+            sparse_learning_rate=self.sparse_learning_rate,
             regularize_with_l0=self.regularize_with_l0,
         )
 
