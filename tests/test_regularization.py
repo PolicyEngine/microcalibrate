@@ -3,7 +3,7 @@ Test the calibration process with L0 regularization.
 """
 
 from microcalibrate.calibration import Calibration
-from microcalibrate.utils.l0 import evaluate_sparse_weights
+from microcalibrate.evaluation import evaluate_sparse_weights
 import logging
 import numpy as np
 import pandas as pd
