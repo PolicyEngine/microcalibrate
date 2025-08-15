@@ -7,7 +7,7 @@ authors = [
     { name = "Nikhil Woodruff", email = "nikhil.woodruff@outlook.com" },
     { name = "María Juaristi", email = "juaristi@uni.minerva.edu" }
 ]
-requires-python = ">=3.11"
+requires-python = ">=3.13"
 dependencies = [
     "torch>=2.7.0",
     "numpy",
@@ -63,7 +63,7 @@ line_length = 79
 
 [tool.black]
 line-length = 79
-target-version = ["py311"]
+target-version = ["py313"]
 
 [project.scripts]
 policyengine-calibrate = "policyengine_calibrate:main"
