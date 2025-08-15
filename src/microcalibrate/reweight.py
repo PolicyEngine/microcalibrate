@@ -6,10 +6,10 @@ from typing import Callable, List, Optional, Union
 import numpy as np
 import pandas as pd
 import torch
+from l0 import HardConcrete
 from torch import Tensor
 from tqdm import tqdm
 
-from .utils.l0 import HardConcrete
 from .utils.log_performance import log_performance_over_epochs
 from .utils.metrics import loss, pct_close
 
@@ -197,7 +197,9 @@ def reweight(
             device=device,
         )
         gates = HardConcrete(
-            len(original_weights), init_mean=init_mean, temperature=temperature
+            len(original_weights),
+            init_mean=init_mean,
+            temperature=temperature,
         ).to(device)
         # NOTE: Results are pretty sensitve to learning rates
         # optimizer breaks down somewhere near .005, does better at above .1

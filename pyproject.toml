@@ -13,6 +13,7 @@ dependencies = [
     "numpy",
     "pandas",
     "tqdm",
+    "l0 @ git+https://github.com/PolicyEngine/L0.git@main",
 ]
 
 [project.optional-dependencies]
@@ -52,6 +53,9 @@ include-package-data = true
 
 [tool.setuptools.package-data]
 "microcalibrate" = ["**/*"]
+
+[tool.hatch.metadata]
+allow-direct-references = true
 
 [tool.isort]
 profile = "black"
