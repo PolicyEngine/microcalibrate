@@ -1,5 +1,4 @@
 import logging
-import os
 from pathlib import Path
 from typing import Callable, List, Optional, Union
 
@@ -12,8 +11,6 @@ from tqdm import tqdm
 
 from .utils.log_performance import log_performance_over_epochs
 from .utils.metrics import loss, pct_close
-
-logger = logging.getLogger(__name__)
 
 
 def reweight(
@@ -35,6 +32,7 @@ def reweight(
     excluded_target_data: Optional[dict] = None,
     csv_path: Optional[str] = None,
     device: Optional[str] = None,
+    logger: Optional[logging.Logger] = None,
 ) -> tuple[np.ndarray, Union[np.ndarray, None], pd.DataFrame]:
     """Reweight the original weights based on the loss matrix and targets.
 
@@ -57,6 +55,7 @@ def reweight(
         excluded_target_data (Optional[dict]): Optional dictionary containing excluded target data with initial estimates and targets.
         csv_path (Optional[str]): Optional path to save the performance metrics as a CSV file.
         device (Optional[str]): Device to run the calibration on (e.g., 'cpu' or 'cuda'). If None, uses the default device.
+        logger (Optional[logging.Logger]): Logger for logging progress and metrics.
 
     Returns:
         np.ndarray: Reweighted weights.
