@@ -13,7 +13,7 @@ dependencies = [
     "numpy",
     "pandas",
     "tqdm",
-    "l0 @ git+https://github.com/PolicyEngine/L0.git@main",
+    "l0-python",
 ]
 
 [project.optional-dependencies]
