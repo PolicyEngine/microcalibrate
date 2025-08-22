@@ -211,6 +211,12 @@
 <li class="toctree-l1"><a class="reference internal" href="calibration.html">Calibration</a></li>
 <li class="toctree-l1"><a class="reference internal" href="calibration.html#basic-usage">Basic usage</a></li>
 <li class="toctree-l1"><a class="reference internal" href="calibration.html#example">Example</a></li>
+<li class="toctree-l1"><a class="reference internal" href="calibration.html#pre-calibration-target-assessment">Pre-calibration target assessment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="calibration.html#best-practices-for-pre-calibration-assessment">Best practices for pre-calibration assessment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="calibration.html#summary">Summary</a></li>
+<li class="toctree-l1"><a class="reference internal" href="l0_regularization.html">L0 regularization for sparse weights</a></li>
+<li class="toctree-l1"><a class="reference internal" href="l0_regularization.html#hyperparameter-tuning-for-l0-regularization">Hyperparameter tuning for L0 regularization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="robustness_evaluation.html">Robustness evaluation for calibration</a></li>
 </ul>
 
 </div>
@@ -253,19 +259,121 @@
         <article role="main" id="furo-main-content">
           <section id="microcalibrate">
 <h1>MicroCalibrate<a class="headerlink" href="#microcalibrate" title="Link to this heading">¶</a></h1>
-<p>MicroCalibrate is a framework that enables survey weight calibration integrating informative diagnostics and visualizations for the user to easily identify and work through hard-to-hit targets. A dashboard allows the user to explore the reweighting process on sample data as well as supporting uploading or pasting a link to the performance log of a specific reweighting job.</p>
-<p>To make sure that your data can be loaded and visualized by the dashboard, it must be in csv format and contain the following columns:</p>
+<p>MicroCalibrate is a comprehensive framework for survey weight calibration that combines traditional calibration techniques with modern machine learning approaches. It enables users to adjust sample weights to match population targets while providing advanced features for sparsity, optimization, and robustness analysis.</p>
+</section>
+<section id="key-features">
+<h1>Key features<a class="headerlink" href="#key-features" title="Link to this heading">¶</a></h1>
+<section id="core-calibration">
+<h2>1. Core calibration<a class="headerlink" href="#core-calibration" title="Link to this heading">¶</a></h2>
 <ul class="simple">
-<li><p>epoch (int)</p></li>
-<li><p>target_name (str)</p></li>
-<li><p>target (float)</p></li>
-<li><p>estimate (float)</p></li>
-<li><p>error (float)</p></li>
-<li><p>abs_error (float)</p></li>
-<li><p>rel_abs_error (float)</p></li>
-<li><p>loss (float)</p></li>
+<li><p><strong>Survey weight adjustment</strong>: The system calibrates sample weights to match known population totals using gradient-based optimization.</p></li>
+<li><p><strong>Multi-target support</strong>: The calibration process can handle multiple calibration targets simultaneously.</p></li>
+<li><p><strong>Custom estimate functions</strong>: Users can use either estimate matrices or custom functions for flexible calibration scenarios.</p></li>
 </ul>
-<p>To access the performance dashboard see: <a class="reference external" href="https://microcalibrate.vercel.app/">https://microcalibrate.vercel.app/</a></p>
+</section>
+<section id="l0-regularization-for-sparsity">
+<h2>2. L0 regularization for sparsity<a class="headerlink" href="#l0-regularization-for-sparsity" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p><strong>Dataset reduction</strong>: The algorithm automatically identifies and zeros out unnecessary weights to reduce dataset size.</p></li>
+<li><p><strong>Sparse weight generation</strong>: The system creates compact datasets while maintaining calibration accuracy.</p></li>
+<li><p><strong>Configurable sparsity</strong>: Users can control the trade-off between dataset size and calibration precision.</p></li>
+</ul>
+</section>
+<section id="automatic-hyperparameter-tuning">
+<h2>3. Automatic hyperparameter tuning<a class="headerlink" href="#automatic-hyperparameter-tuning" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p><strong>Cross-validation</strong>: The system uses holdout validation to find optimal regularization parameters.</p></li>
+<li><p><strong>Multi-objective optimization</strong>: The optimization process balances calibration loss, accuracy, and sparsity.</p></li>
+<li><p><strong>Optuna integration</strong>: The package leverages state-of-the-art hyperparameter optimization through Optuna.</p></li>
+</ul>
+</section>
+<section id="robustness-evaluation">
+<h2>4. Robustness evaluation<a class="headerlink" href="#robustness-evaluation" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p><strong>Generalization assessment</strong>: The evaluation module assesses how well calibration performs on unseen targets.</p></li>
+<li><p><strong>Stability snalysis</strong>: The system identifies targets that are difficult to calibrate reliably.</p></li>
+<li><p><strong>Actionable recommendations</strong>: Users receive specific suggestions for improving calibration robustness.</p></li>
+</ul>
+</section>
+<section id="target-analysis">
+<h2>5. Target analysis<a class="headerlink" href="#target-analysis" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p><strong>Pre-calibration assessment</strong>: The system identifies problematic targets before calibration begins.</p></li>
+<li><p><strong>Analytical solutions</strong>: The analysis helps users understand the mathematical difficulty of target combinations.</p></li>
+<li><p><strong>Order of magnitude warnings</strong>: The system detects targets that differ significantly from initial estimates.</p></li>
+</ul>
+</section>
+<section id="performance-monitoring">
+<h2>6. Performance monitoring<a class="headerlink" href="#performance-monitoring" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p><strong>Detailed logging</strong>: The system tracks calibration progress across epochs.</p></li>
+<li><p><strong>Performance dashboard</strong>: Users can visualize calibration results at <a class="reference external" href="https://microcalibrate.vercel.app/">https://microcalibrate.vercel.app/</a>.</p></li>
+<li><p><strong>CSV export</strong>: The system can save detailed performance metrics for further analysis.</p></li>
+</ul>
+</section>
+</section>
+<section id="dashboard-requirements">
+<h1>Dashboard requirements<a class="headerlink" href="#dashboard-requirements" title="Link to this heading">¶</a></h1>
+<p>To use the performance dashboard for visualization, users must ensure their calibration log CSV contains the following fields:</p>
+<ul class="simple">
+<li><p>epoch (int): The iteration number during calibration.</p></li>
+<li><p>target_name (str): The name of each calibration target.</p></li>
+<li><p>target (float): The target value to achieve.</p></li>
+<li><p>estimate (float): The estimated value at each epoch.</p></li>
+<li><p>error (float): The difference between target and estimate.</p></li>
+<li><p>abs_error (float): The absolute error value.</p></li>
+<li><p>rel_abs_error (float): The relative absolute error.</p></li>
+<li><p>loss (float): The loss value at each epoch.</p></li>
+</ul>
+</section>
+<section id="getting-started">
+<h1>Getting started<a class="headerlink" href="#getting-started" title="Link to this heading">¶</a></h1>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">microcalibrate</span><span class="w"> </span><span class="kn">import</span> <span class="n">Calibration</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+
+<span class="c1"># Basic calibration</span>
+<span class="n">cal</span> <span class="o">=</span> <span class="n">Calibration</span><span class="p">(</span>
+    <span class="n">weights</span><span class="o">=</span><span class="n">initial_weights</span><span class="p">,</span>
+    <span class="n">targets</span><span class="o">=</span><span class="n">target_values</span><span class="p">,</span>
+    <span class="n">estimate_matrix</span><span class="o">=</span><span class="n">contribution_matrix</span>
+<span class="p">)</span>
+<span class="n">performance</span> <span class="o">=</span> <span class="n">cal</span><span class="o">.</span><span class="n">calibrate</span><span class="p">()</span>
+
+<span class="c1"># With L0 regularization</span>
+<span class="n">cal</span> <span class="o">=</span> <span class="n">Calibration</span><span class="p">(</span>
+    <span class="n">weights</span><span class="o">=</span><span class="n">initial_weights</span><span class="p">,</span>
+    <span class="n">targets</span><span class="o">=</span><span class="n">target_values</span><span class="p">,</span>
+    <span class="n">estimate_matrix</span><span class="o">=</span><span class="n">contribution_matrix</span><span class="p">,</span>
+    <span class="n">regularize_with_l0</span><span class="o">=</span><span class="kc">True</span>
+<span class="p">)</span>
+<span class="n">performance</span> <span class="o">=</span> <span class="n">cal</span><span class="o">.</span><span class="n">calibrate</span><span class="p">()</span>
+<span class="n">sparse_weights</span> <span class="o">=</span> <span class="n">cal</span><span class="o">.</span><span class="n">sparse_weights</span>
+
+<span class="c1"># Hyperparameter tuning</span>
+<span class="n">best_params</span> <span class="o">=</span> <span class="n">cal</span><span class="o">.</span><span class="n">tune_l0_hyperparameters</span><span class="p">(</span><span class="n">n_trials</span><span class="o">=</span><span class="mi">30</span><span class="p">)</span>
+
+<span class="c1"># Robustness evaluation</span>
+<span class="n">robustness</span> <span class="o">=</span> <span class="n">cal</span><span class="o">.</span><span class="n">evaluate_holdout_robustness</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">robustness</span><span class="p">[</span><span class="s1">&#39;recommendation&#39;</span><span class="p">])</span>
+</pre></div>
+</div>
+</section>
+<section id="documentation-structure">
+<h1>Documentation structure<a class="headerlink" href="#documentation-structure" title="Link to this heading">¶</a></h1>
+<ul class="simple">
+<li><p><strong><a class="reference internal" href="calibration.html"><span class="std std-doc">Basic calibration</span></a></strong>: Core calibration concepts and basic usage</p></li>
+<li><p><strong><a class="reference internal" href="l0_regularization.html"><span class="std std-doc">L0 regularization</span></a></strong>: Creating sparse weights for dataset reduction</p></li>
+<li><p><strong><a class="reference internal" href="robustness_evaluation.html"><span class="std std-doc">Robustness evaluation</span></a></strong>: Assessing calibration stability and generalization</p></li>
+</ul>
+</section>
+<section id="support">
+<h1>Support<a class="headerlink" href="#support" title="Link to this heading">¶</a></h1>
+<ul class="simple">
+<li><p><strong>GitHub issues</strong>: <a class="reference external" href="https://github.com/PolicyEngine/microcalibrate/issues">https://github.com/PolicyEngine/microcalibrate/issues</a></p></li>
+<li><p><strong>Documentation</strong>: <a class="reference external" href="https://policyengine.github.io/microcalibrate/">https://policyengine.github.io/microcalibrate/</a></p></li>
+<li><p><strong>Performance dashboard</strong>: <a class="reference external" href="https://microcalibrate.vercel.app/">https://microcalibrate.vercel.app/</a></p></li>
+</ul>
 <div class="toctree-wrapper compound">
 </div>
 </section>
