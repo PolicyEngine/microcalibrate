@@ -141,7 +141,7 @@ def test_l0_hyperparameter_tuning_with_holdouts(test_data) -> None:
     )
 
     # Test hyperparameter tuning
-    best_params = calibrator.tune_hyperparameters(
+    best_params = calibrator.tune_l0_hyperparameters(
         n_trials=20,  # Fewer trials for testing
         epochs_per_trial=50,  # Shorter epochs for quick testing
         objectives_balance={
@@ -247,7 +247,7 @@ def test_l0_hyperparameter_tuning_without_holdouts(test_data) -> None:
     )
 
     # Test hyperparameter tuning WITHOUT holdouts
-    best_params = calibrator.tune_hyperparameters(
+    best_params = calibrator.tune_l0_hyperparameters(
         n_trials=10,
         epochs_per_trial=30,
         n_holdout_sets=1,  # Single holdout set
