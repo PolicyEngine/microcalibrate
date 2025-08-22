@@ -30,18 +30,18 @@ def loss(
 
 def pct_close(
     estimate: torch.Tensor,
-    targets_array: torch.Tensor,
+    targets: torch.Tensor,
     t: Optional[float] = 0.1,
 ) -> float:
     """Calculate the percentage of estimates close to targets.
 
     Args:
         estimate (torch.Tensor): Current estimates in log space.
-        targets_array (torch.Tensor): Array of target values.
+        targets (torch.Tensor): Array of target values.
         t (float): Optional threshold for closeness.
 
     Returns:
         float: Percentage of estimates within the threshold.
     """
-    abs_error = torch.abs((estimate - targets_array) / (1 + targets_array))
+    abs_error = torch.abs((estimate - targets) / (1 + targets))
     return ((abs_error < t).sum() / abs_error.numel()).item()
