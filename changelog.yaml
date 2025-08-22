@@ -152,3 +152,8 @@
     - Add hyperparameter tuning for L0 implementation with option to holdout targets.
     - Add method to evaluate robustness of calibration to target holdouts.
   date: 2025-08-22 11:04:35
+- bump: minor
+  changes:
+    added:
+    - Adding documentation for L0, hyperparameter tuning and robustness checks.
+  date: 2025-08-22 13:47:07
