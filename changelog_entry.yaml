@@ -1,5 +1,0 @@
-- bump: patch
-  changes:
-    changed:
-    - Moved to PolicyEngine's L0 package for regularization implementation.
-    - Moved to python 3.13.
