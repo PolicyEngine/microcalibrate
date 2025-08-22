@@ -2,3 +2,5 @@ format: jb-book
 root: intro
 chapters:
 - file: calibration.ipynb
+- file: l0_regularization.ipynb
+- file: robustness_evaluation.ipynb
