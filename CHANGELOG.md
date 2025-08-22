@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), 
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.20.0] - 2025-08-22 11:04:35
+
+### Added
+
+- Add hyperparameter tuning for L0 implementation with option to holdout targets.
+- Add method to evaluate robustness of calibration to target holdouts.
+
 ## [0.19.2] - 2025-08-22 07:42:30
 
 ### Changed
@@ -181,6 +188,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+[0.20.0]: https://github.com/PolicyEngine/microcalibrate/compare/0.19.2...0.20.0
 [0.19.2]: https://github.com/PolicyEngine/microcalibrate/compare/0.19.1...0.19.2
 [0.19.1]: https://github.com/PolicyEngine/microcalibrate/compare/0.19.0...0.19.1
 [0.19.0]: https://github.com/PolicyEngine/microcalibrate/compare/0.18.0...0.19.0
