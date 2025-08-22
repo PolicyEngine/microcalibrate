@@ -5,8 +5,7 @@ import numpy as np
 import optuna
 import pandas as pd
 import torch
-
-logger = logging.getLogger(__name__)
+from torch import Tensor
 
 
 class Calibration:
@@ -29,6 +28,7 @@ class Calibration:
         device: str = "cpu",  # fix to cpu for now to avoid user device-specific issues
         l0_lambda: float = 5e-6,  # best between 1e-6 and 1e-5
         init_mean: float = 0.999,  # initial proportion with non-zero weights, set near 0
+        sparse_learning_rate: float = 0.2,
         temperature: float = 0.5,  # usual values .5 to 3
         sparse_learning_rate: Optional[float] = 0.2,
         regularize_with_l0: Optional[bool] = False,
@@ -53,9 +53,20 @@ class Calibration:
             l0_lambda (float): Regularization parameter for L0 regularization. Defaults to 5e-6.
             init_mean (float): Initial mean for L0 regularization, representing the initial proportion of non-zero weights. Defaults to 0.999.
             temperature (float): Temperature parameter for L0 regularization, controlling the sparsity of the model. Defaults to 0.5.
+            sparse_learning_rate (float): Learning rate for the regularizing optimizer. Defaults to 0.2.
             regularize_with_l0 (Optional[bool]): Whether to apply L0 regularization. Defaults to False.
-            seed (Optional[int]): Random seed for reproducibility. Defaults to 42.
         """
+        if device is not None:
+            self.device = torch.device(device)
+        else:
+            self.device = torch.device(
+                "cuda"
+                if torch.cuda.is_available()
+                else "mps" if torch.mps.is_available() else "cpu"
+            )
+
+        self.logger = logging.getLogger(__name__)
+
         self.original_estimate_matrix = estimate_matrix
         self.original_targets = targets
         self.original_target_names = target_names
@@ -125,7 +136,7 @@ class Calibration:
                     "Either estimate_function or estimate_matrix must be provided"
                 )
         elif self.excluded_targets:
-            logger.warning(
+            self.logger.warning(
                 "You are passing an estimate function with excluded targets. "
                 "Make sure the function handles excluded targets correctly, as reweight() will handle the filtering."
             )
@@ -162,6 +173,7 @@ class Calibration:
             temperature=self.temperature,
             sparse_learning_rate=self.sparse_learning_rate,
             regularize_with_l0=self.regularize_with_l0,
+            logger=self.logger,
         )
 
         self.weights = new_weights
@@ -202,10 +214,10 @@ class Calibration:
                 else None
             )
 
-            logger.info(
+            self.logger.info(
                 f"Excluded {len(excluded_indices)} targets from calibration: {self.excluded_targets}"
             )
-            logger.info(f"Calibrating {len(targets_array)} targets")
+            self.logger.info(f"Calibrating {len(targets_array)} targets")
         else:
             targets_array = self.original_targets
             target_names = self.original_target_names
@@ -315,7 +327,7 @@ class Calibration:
             ValueError: If the targets do not match the expected format or values.
             ValueError: If the targets are not compatible with each other.
         """
-        logger.info("Performing basic target assessment...")
+        self.logger.info("Performing basic target assessment...")
 
         if targets.ndim != 1:
             raise ValueError("Targets must be a 1D NumPy array.")
@@ -324,7 +336,7 @@ class Calibration:
             raise ValueError("Targets contain NaN values.")
 
         if np.any(targets < 0):
-            logger.warning(
+            self.logger.warning(
                 "Some targets are negative. This may not make sense for totals."
             )
 
@@ -360,13 +372,13 @@ class Calibration:
             )
 
             if estimate_val == 0:
-                logger.warning(
+                self.logger.warning(
                     f"Column {target_name} has a zero estimate sum; using ε={eps} for comparison."
                 )
 
             order_diff = np.log10(abs(ratio)) if ratio != 0 else np.inf
             if order_diff > 1:
-                logger.warning(
+                self.logger.warning(
                     f"Target {target_name} ({target_val:.2e}) differs from initial estimate ({estimate_val:.2e}) "
                     f"by {order_diff:.2f} orders of magnitude."
                 )
@@ -384,7 +396,7 @@ class Calibration:
                         / estimate_matrix.shape[0]
                     )
                 if contribution_ratio < 0.01:
-                    logger.warning(
+                    self.logger.warning(
                         f"Target {target_name} is supported by only {contribution_ratio:.2%} "
                         f"of records in the loss matrix. This may make calibration unstable or ineffective."
                     )
@@ -441,7 +453,7 @@ class Calibration:
             for i in range(len(self.original_estimate_matrix.columns))
         }
 
-        logger.info(
+        self.logger.info(
             "Assessing analytical solution to the optimization problem for each target... \n"
             "This evaluates how much each target complicates achieving calibration accuracy. The loss reported is the mean squared error of the least squares solution."
         )

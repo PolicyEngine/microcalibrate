@@ -1,19 +1,19 @@
 [project]
 name = "microcalibrate"
-version = "0.19.0"
+version = "0.19.2"
 description = "Calibrating microdata"
 readme = "README.md"
 authors = [
     { name = "Nikhil Woodruff", email = "nikhil.woodruff@outlook.com" },
     { name = "María Juaristi", email = "juaristi@uni.minerva.edu" }
 ]
-requires-python = ">=3.11"
+requires-python = ">=3.13"
 dependencies = [
     "torch>=2.7.0",
     "numpy",
     "pandas",
     "tqdm",
-    "optuna",
+    "l0-python",
 ]
 
 [project.optional-dependencies]
@@ -31,7 +31,7 @@ dev = [
 
 docs = [
     "sphinx>=5.0.0",
-    "docutils>=0.19.0",
+    "docutils>=0.19.2",
     "jupyter-book>=0.15.0",
     "sphinx-book-theme>=1.0.0",
     "sphinx-copybutton>=0.5.0",
@@ -54,13 +54,16 @@ include-package-data = true
 [tool.setuptools.package-data]
 "microcalibrate" = ["**/*"]
 
+[tool.hatch.metadata]
+allow-direct-references = true
+
 [tool.isort]
 profile = "black"
 line_length = 79
 
 [tool.black]
 line-length = 79
-target-version = ["py311"]
+target-version = ["py313"]
 
 [project.scripts]
 policyengine-calibrate = "policyengine_calibrate:main"

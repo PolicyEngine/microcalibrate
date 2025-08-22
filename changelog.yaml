@@ -134,3 +134,15 @@
     - Adding column to sort by calibration difference to dashboard comparisons page.
     - Ensure pagination so all repo branches are visible in the github loading.
   date: 2025-08-04 15:53:14
+- bump: patch
+  changes:
+    added:
+    - Added a parameter to adjust the learning rate of the sparse optimizer.
+    - Fixed label in dashboard that incorrectly displayed 'estimate' instead of 'target'.
+  date: 2025-08-11 15:25:07
+- bump: patch
+  changes:
+    changed:
+    - Moved to PolicyEngine's L0 package for regularization implementation.
+    - Moved to python 3.13.
+  date: 2025-08-22 07:42:30
