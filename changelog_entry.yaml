@@ -1,0 +1,4 @@
+- bump: patch
+  changes:
+    fixed:
+      - Fixed critical React Server Components CVE vulnerabilities (CVE-2025-55182, CVE-2025-66478)
