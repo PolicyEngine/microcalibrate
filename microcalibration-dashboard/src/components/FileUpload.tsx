@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import Papa from 'papaparse';
 import { Upload, File as FileIcon, Link, Database, GitBranch } from 'lucide-react';
 import JSZip from 'jszip';
 import { DeeplinkParams, GitHubArtifactInfo } from '@/utils/deeplinks';
@@ -233,58 +234,51 @@ export default function FileUpload({
   }, [deeplinkParams, isLoadingFromDeeplink, loadDeeplinkArtifacts]);
 
   function sampleEpochs(csvContent: string, maxEpochs = 10): { content: string; wasSampled: boolean; originalEpochs: number; sampledEpochs: number } {
-    const lines = csvContent.trim().split('\n');
-    const header = lines[0];
-    const dataLines = lines.slice(1);
-    
-    if (dataLines.length === 0) return { content: csvContent, wasSampled: false, originalEpochs: 0, sampledEpochs: 0 };
-    
-    // Parse epoch column index
-    const headerCols = header.toLowerCase().split(',');
-    const epochIndex = headerCols.findIndex(col => col.trim() === 'epoch');
-    
-    if (epochIndex === -1) return { content: csvContent, wasSampled: false, originalEpochs: 0, sampledEpochs: 0 };
-    
-    // Group data by epoch
-    const epochData = new Map<number, string[]>();
-    dataLines.forEach(line => {
-      const cols = line.split(',');
-      const epoch = parseInt(cols[epochIndex]);
+    const parsed = Papa.parse<Record<string, string>>(csvContent, {
+      header: true,
+      skipEmptyLines: true,
+    });
+
+    if (parsed.data.length === 0 || !parsed.meta.fields?.includes('epoch')) {
+      return { content: csvContent, wasSampled: false, originalEpochs: 0, sampledEpochs: 0 };
+    }
+
+    const epochData = new Map<number, Record<string, string>[]>();
+    parsed.data.forEach(row => {
+      const epoch = parseInt(row.epoch);
       if (!isNaN(epoch)) {
         if (!epochData.has(epoch)) {
           epochData.set(epoch, []);
         }
-        epochData.get(epoch)!.push(line);
+        epochData.get(epoch)!.push(row);
       }
     });
-    
-    // Get sorted unique epochs
+
     const allEpochs = Array.from(epochData.keys()).sort((a, b) => a - b);
     const originalEpochCount = allEpochs.length;
-    
+
     if (allEpochs.length <= maxEpochs) {
       return { content: csvContent, wasSampled: false, originalEpochs: originalEpochCount, sampledEpochs: originalEpochCount };
     }
-    
-    // Sample evenly spaced epochs
+
     const sampledEpochs: number[] = [];
     for (let i = 0; i < maxEpochs; i++) {
       const index = Math.round((i / (maxEpochs - 1)) * (allEpochs.length - 1));
       sampledEpochs.push(allEpochs[index]);
     }
-    
-    // Collect sampled data
-    const sampledLines: string[] = [header];
+
+    const sampledRows: Record<string, string>[] = [];
     sampledEpochs.forEach(epoch => {
-      const epochLines = epochData.get(epoch) || [];
-      sampledLines.push(...epochLines);
+      const rows = epochData.get(epoch) || [];
+      sampledRows.push(...rows);
     });
-    
-    return { 
-      content: sampledLines.join('\n'), 
-      wasSampled: true, 
-      originalEpochs: originalEpochCount, 
-      sampledEpochs: maxEpochs 
+
+    const output = Papa.unparse(sampledRows, { columns: parsed.meta.fields });
+    return {
+      content: output,
+      wasSampled: true,
+      originalEpochs: originalEpochCount,
+      sampledEpochs: maxEpochs,
     };
   }
 

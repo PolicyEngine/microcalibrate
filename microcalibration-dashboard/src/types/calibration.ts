@@ -7,6 +7,7 @@ export interface CalibrationDataPoint {
   error: number;
   abs_error: number;
   rel_abs_error: number;
+  rel_error?: number;
 }
 
 export interface CalibrationMetrics {
