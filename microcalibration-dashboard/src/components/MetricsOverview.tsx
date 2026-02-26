@@ -24,8 +24,11 @@ export default function MetricsOverview({ data }: MetricsOverviewProps) {
   
   // Calculate convergence epoch
   const lossByEpoch = allEpochs.map(epoch => {
-    const epochData = data.find(d => d.epoch === epoch);
-    return { epoch, loss: epochData?.loss || 0 };
+    const epochData = data.filter(d => d.epoch === epoch);
+    const meanLoss = epochData.length > 0
+      ? epochData.reduce((sum, d) => sum + d.loss, 0) / epochData.length
+      : 0;
+    return { epoch, loss: meanLoss };
   });
 
   let convergenceEpoch: number | undefined;
@@ -43,7 +46,9 @@ export default function MetricsOverview({ data }: MetricsOverviewProps) {
   // Calculate quality metrics
   const totalTargets = latestData.length;
   const avgRelAbsError = latestData.reduce((sum, item) => sum + item.rel_abs_error, 0) / totalTargets;
-  const finalLoss = latestData[0]?.loss || 0;
+  const finalLoss = latestData.length > 0
+    ? latestData.reduce((sum, item) => sum + item.loss, 0) / latestData.length
+    : 0;
   
   // Categorize targets by error quality
   const excellentCount = latestData.filter(item => item.rel_abs_error < 0.05).length;

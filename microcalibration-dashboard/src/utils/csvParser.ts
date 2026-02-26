@@ -38,13 +38,19 @@ export function getCalibrationMetrics(data: CalibrationDataPoint[]): Calibration
   const epochs = [...new Set(data.map(d => d.epoch))].sort((a, b) => a - b);
   const targetNames = [...new Set(data.map(d => d.target_name))];
   const finalEpoch = epochs.length > 0 ? epochs[epochs.length - 1] : 0;
-  const finalLoss = data.find(d => d.epoch === finalEpoch)?.loss || 0;
+  const finalEpochData = data.filter(d => d.epoch === finalEpoch);
+  const finalLoss = finalEpochData.length > 0
+    ? finalEpochData.reduce((sum, d) => sum + d.loss, 0) / finalEpochData.length
+    : 0;
 
   // Find convergence epoch (when loss stops decreasing significantly)
   let convergenceEpoch: number | undefined;
   const lossByEpoch = epochs.map(epoch => {
-    const epochData = data.find(d => d.epoch === epoch);
-    return { epoch, loss: epochData?.loss || 0 };
+    const epochData = data.filter(d => d.epoch === epoch);
+    const meanLoss = epochData.length > 0
+      ? epochData.reduce((sum, d) => sum + d.loss, 0) / epochData.length
+      : 0;
+    return { epoch, loss: meanLoss };
   });
 
   for (let i = 1; i < lossByEpoch.length; i++) {
