@@ -1,7 +1,4 @@
-/**
- * Utility functions for ordering target names alphanumerically
- * with hierarchical support for "/" separated parts
- */
+import { globMatch, hasGlobChars } from './globMatch';
 
 /**
  * Natural alphanumeric comparison function that handles numbers correctly
@@ -83,13 +80,18 @@ export function sortTargetsWithRelevance(targets: string[], searchQuery: string)
   if (!searchQuery.trim()) {
     return sortTargetNames(targets);
   }
-  
+
+  if (hasGlobChars(searchQuery)) {
+    const matched = targets.filter(t => globMatch(searchQuery, t));
+    return sortTargetNames(matched);
+  }
+
   const queryLower = searchQuery.toLowerCase();
-  
+
   const exactMatches: string[] = [];
   const startsWithMatches: string[] = [];
   const containsMatches: string[] = [];
-  
+
   targets.forEach(target => {
     const targetLower = target.toLowerCase();
     if (targetLower === queryLower) {
@@ -100,7 +102,7 @@ export function sortTargetsWithRelevance(targets: string[], searchQuery: string)
       containsMatches.push(target);
     }
   });
-  
+
   return [
     ...sortTargetNames(exactMatches),
     ...sortTargetNames(startsWithMatches),

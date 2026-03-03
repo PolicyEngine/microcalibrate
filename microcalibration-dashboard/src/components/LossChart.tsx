@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { CalibrationDataPoint } from '@/types/calibration';
 import { getSortedUniqueTargets, sortTargetsWithRelevance } from '@/utils/targetOrdering';
+import { globMatch } from '@/utils/globMatch';
 
 interface LossChartProps {
   data: CalibrationDataPoint[];
@@ -18,7 +19,7 @@ export default function LossChart({ data }: LossChartProps) {
   // Filter targets based on search query
   const searchFilteredTargets = sortTargetsWithRelevance(
     targetNames.filter(target =>
-      target.toLowerCase().includes(targetSearchQuery.toLowerCase())
+      globMatch(targetSearchQuery, target)
     ),
     targetSearchQuery
   );
@@ -94,7 +95,7 @@ export default function LossChart({ data }: LossChartProps) {
           <div className="relative min-w-0" style={{ minWidth: '200px' }}>
             <input
               type="text"
-              placeholder="Search targets..."
+              placeholder="Search... (* = wildcard)"
               value={targetSearchQuery}
               onChange={(e) => {
                 setTargetSearchQuery(e.target.value);

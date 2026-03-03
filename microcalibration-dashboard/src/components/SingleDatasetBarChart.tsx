@@ -5,6 +5,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { CalibrationDataPoint } from '@/types/calibration';
 import { BarChart3 } from 'lucide-react';
 import { sortTargetsWithRelevance, getSortedUniqueTargets } from '@/utils/targetOrdering';
+import { globMatch } from '@/utils/globMatch';
 
 interface SingleDatasetBarChartProps {
   data: CalibrationDataPoint[];
@@ -51,8 +52,8 @@ export default function SingleDatasetBarChart({ data }: SingleDatasetBarChartPro
 
   // Filter and paginate targets based on search
   const getFilteredTargets = () => {
-    const filtered = allTargets.filter(target => 
-      target.toLowerCase().includes(searchQuery.toLowerCase())
+    const filtered = allTargets.filter(target =>
+      globMatch(searchQuery, target)
     );
     return sortTargetsWithRelevance(filtered, searchQuery);
   };
@@ -171,7 +172,7 @@ export default function SingleDatasetBarChart({ data }: SingleDatasetBarChartPro
           <div className="mb-3">
             <input
               type="text"
-              placeholder="Search targets by name..."
+              placeholder="Search... (* = wildcard)"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"

@@ -12,18 +12,25 @@ export function parseCalibrationCSV(csvContent: string): CalibrationDataPoint[] 
     throw new Error(`CSV parsing error: ${result.errors[0].message}`);
   }
 
-  return result.data.filter(row => 
-    row.epoch !== undefined && 
-    row.loss !== undefined && 
+  return result.data.filter(row =>
+    row.epoch !== undefined &&
+    row.loss !== undefined &&
     row.target_name !== undefined
-  ).map(row => ({
-    ...row,
-    // Replace infinite values with a large finite number for better handling
-    loss: isFinite(row.loss) ? row.loss : (row.loss > 0 ? 1e10 : -1e10),
-    error: isFinite(row.error) ? row.error : (row.error > 0 ? 1e10 : -1e10),
-    abs_error: isFinite(row.abs_error) ? row.abs_error : 1e10,
-    rel_abs_error: isFinite(row.rel_abs_error) ? row.rel_abs_error : 1e10,
-  }));
+  ).map(row => {
+    const achievableRaw = (row as unknown as Record<string, unknown>).achievable;
+    let achievable: boolean | undefined;
+    if (achievableRaw === true || achievableRaw === 'True') achievable = true;
+    else if (achievableRaw === false || achievableRaw === 'False') achievable = false;
+
+    return {
+      ...row,
+      loss: isFinite(row.loss) ? row.loss : (row.loss > 0 ? 1e10 : -1e10),
+      error: isFinite(row.error) ? row.error : (row.error > 0 ? 1e10 : -1e10),
+      abs_error: isFinite(row.abs_error) ? row.abs_error : 1e10,
+      rel_abs_error: isFinite(row.rel_abs_error) ? row.rel_abs_error : 1e10,
+      achievable,
+    };
+  });
 }
 
 export function getCalibrationMetrics(data: CalibrationDataPoint[]): CalibrationMetrics {
