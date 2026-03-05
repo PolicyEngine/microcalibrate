@@ -79,7 +79,7 @@ export default function ValidationScatterPlot({ data }: ValidationScatterPlotPro
     <div className="bg-white rounded-lg shadow-lg p-6">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-semibold text-gray-900">
-          Sim Value vs Target Value
+          Sim value vs target value
         </h2>
         <div className="flex items-center gap-2">
           <button

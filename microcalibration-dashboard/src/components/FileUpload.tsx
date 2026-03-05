@@ -1642,7 +1642,7 @@ export default function FileUpload({
                 {/* Second Selection for Comparison */}
                 {comparisonMode && githubBranches.length > 0 && (
                   <div className="border-t border-gray-200 pt-4 mt-6">
-                    <h4 className="text-md font-semibold text-gray-800 mb-4">Second Calibration Run (for comparison)</h4>
+                    <h4 className="text-md font-semibold text-gray-800 mb-4">Second calibration run (for comparison)</h4>
                     
                     {/* Second Branch Selection */}
                     <div className="mb-4">

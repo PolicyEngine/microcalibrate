@@ -73,7 +73,7 @@ export default function ValidationDataTable({ data }: ValidationDataTableProps) 
 
   return (
     <div className="bg-white rounded-lg shadow-lg p-6">
-      <h2 className="text-xl font-semibold text-gray-900 mb-4">Validation Results</h2>
+      <h2 className="text-xl font-semibold text-gray-900 mb-4">Validation results</h2>
 
       <div className="flex flex-wrap gap-3 mb-4">
         <input

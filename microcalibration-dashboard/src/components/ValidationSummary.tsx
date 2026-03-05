@@ -31,8 +31,8 @@ export default function ValidationSummary({ data }: ValidationSummaryProps) {
   const oosStats = summarize(outOfSample);
 
   const cards = [
-    { label: 'Areas Validated', value: String(areas.size), color: 'blue' },
-    { label: 'Total Targets', value: String(allStats.n), color: 'gray' },
+    { label: 'Areas validated', value: String(areas.size), color: 'blue' },
+    { label: 'Total targets', value: String(allStats.n), color: 'gray' },
     { label: '< 5% Error', value: pct(allStats.within5, allStats.n), color: 'green' },
     { label: '< 10% Error', value: pct(allStats.within10, allStats.n), color: 'emerald' },
     { label: '< 20% Error', value: pct(allStats.within20, allStats.n), color: 'yellow' },
@@ -41,7 +41,7 @@ export default function ValidationSummary({ data }: ValidationSummaryProps) {
 
   return (
     <div className="bg-white rounded-lg shadow-lg p-6">
-      <h2 className="text-xl font-semibold text-gray-900 mb-4">Validation Summary</h2>
+      <h2 className="text-xl font-semibold text-gray-900 mb-4">Validation summary</h2>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
         {cards.map(card => (
@@ -59,7 +59,7 @@ export default function ValidationSummary({ data }: ValidationSummaryProps) {
           <div className="grid grid-cols-2 gap-4">
             <div className="bg-blue-50 rounded-lg p-4">
               <h3 className="text-sm font-semibold text-blue-800 mb-2">
-                In-Training ({trainGroups} target group{trainGroups !== 1 ? 's' : ''} &times; {areas.size} areas = {trainStats.n})
+                In-training ({trainGroups} target group{trainGroups !== 1 ? 's' : ''} &times; {areas.size} areas = {trainStats.n})
               </h3>
               <div className="text-sm text-blue-700 space-y-1">
                 <div>&lt;5%: {pct(trainStats.within5, trainStats.n)}</div>
@@ -69,7 +69,7 @@ export default function ValidationSummary({ data }: ValidationSummaryProps) {
             </div>
             <div className="bg-purple-50 rounded-lg p-4">
               <h3 className="text-sm font-semibold text-purple-800 mb-2">
-                Out-of-Sample ({oosGroups} target group{oosGroups !== 1 ? 's' : ''} &times; {areas.size} areas = {oosStats.n})
+                Out-of-sample ({oosGroups} target group{oosGroups !== 1 ? 's' : ''} &times; {areas.size} areas = {oosStats.n})
               </h3>
               <div className="text-sm text-purple-700 space-y-1">
                 <div>&lt;5%: {pct(oosStats.within5, oosStats.n)}</div>

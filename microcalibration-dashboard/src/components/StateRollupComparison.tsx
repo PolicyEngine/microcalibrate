@@ -125,7 +125,7 @@ export default function StateRollupComparison({ calibrationData, validationData 
   if (rows.length === 0) {
     return (
       <div className="bg-white rounded-lg shadow-lg p-6">
-        <h2 className="text-xl font-semibold text-gray-900 mb-2">State Rollup Comparison</h2>
+        <h2 className="text-xl font-semibold text-gray-900 mb-2">State rollup comparison</h2>
         <p className="text-gray-500 text-sm">
           No district-level calibration data found to compare against state-level validation.
           Ensure calibration targets use <code>cd_XXXX/</code> prefixes and validation has <code>state_XX/</code> targets.
@@ -144,7 +144,7 @@ export default function StateRollupComparison({ calibrationData, validationData 
 
   return (
     <div className="bg-white rounded-lg shadow-lg p-6">
-      <h2 className="text-xl font-semibold text-gray-900 mb-4">State Rollup Comparison</h2>
+      <h2 className="text-xl font-semibold text-gray-900 mb-4">State rollup comparison</h2>
       <p className="text-xs text-gray-500 mb-3">
         Sums district-level X*w estimates from calibration and compares to state-level sim.calculate values from validation.
       </p>

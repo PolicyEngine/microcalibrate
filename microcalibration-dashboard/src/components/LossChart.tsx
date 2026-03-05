@@ -27,7 +27,7 @@ export default function LossChart({ data }: LossChartProps) {
   if (targetNames.length === 0) {
     return (
       <div className="bg-white p-6 rounded-lg shadow border">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Target Convergence</h3>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Target convergence</h3>
         <p className="text-gray-600">No data available</p>
       </div>
     );

@@ -93,7 +93,7 @@ export default function CalibrationVsSimComparison({ calibrationData, validation
   if (joined.length === 0) {
     return (
       <div className="bg-white rounded-lg shadow-lg p-6">
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">Calibration vs Simulation</h2>
+        <h2 className="text-xl font-semibold text-gray-900 mb-4">Calibration vs simulation</h2>
         <p className="text-gray-500">No matching target_names found between calibration and validation data. Ensure both CSVs use the same target_name format.</p>
       </div>
     );
@@ -117,7 +117,12 @@ export default function CalibrationVsSimComparison({ calibrationData, validation
 
   return (
     <div className="bg-white rounded-lg shadow-lg p-6">
-      <h2 className="text-xl font-semibold text-gray-900 mb-4">Calibration vs Simulation Comparison</h2>
+      <h2 className="text-xl font-semibold text-gray-900 mb-2">Calibration vs simulation comparison</h2>
+      <p className="text-xs text-gray-500 mb-4">
+        Compares the calibration optimizer&apos;s estimate (X*w) against what sim.calculate() actually produces for the same targets.
+        The <strong>gap</strong> = sim_error &minus; xw_error, i.e. how much the simulation drifted from what calibration predicted.
+        Negative gaps (green) mean sim is closer to the target than X*w; positive gaps (red) mean sim got worse.
+      </p>
 
       {/* Regression severity banner */}
       <div className={`rounded-lg border p-3 mb-4 ${bannerColor}`}>
@@ -141,17 +146,17 @@ export default function CalibrationVsSimComparison({ calibrationData, validation
       <div className="grid grid-cols-3 gap-4 mb-4">
         <div className="bg-gray-50 rounded-lg p-3 text-center">
           <div className="text-2xl font-bold text-blue-600">{joined.length}</div>
-          <div className="text-xs text-gray-500">Matched Targets</div>
+          <div className="text-xs text-gray-500">Matched targets</div>
         </div>
         <div className="bg-gray-50 rounded-lg p-3 text-center">
           <div className="text-2xl font-bold text-amber-600">{formatNumber(meanAbsGap)}</div>
-          <div className="text-xs text-gray-500">Mean |Gap|</div>
+          <div className="text-xs text-gray-500">Mean |gap|</div>
         </div>
         <div className="bg-gray-50 rounded-lg p-3 text-center">
           <div className={`text-2xl font-bold ${nWorse > joined.length / 2 ? 'text-red-600' : 'text-green-600'}`}>
             {nWorse}/{filtered.length}
           </div>
-          <div className="text-xs text-gray-500">Sim Worse than X*w</div>
+          <div className="text-xs text-gray-500">Sim worse than X*w</div>
         </div>
       </div>
 

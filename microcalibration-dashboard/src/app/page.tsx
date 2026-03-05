@@ -19,6 +19,7 @@ import ValidationSummary from '@/components/ValidationSummary';
 import ValidationDataTable from '@/components/ValidationDataTable';
 import ValidationByAreaChart from '@/components/ValidationByAreaChart';
 import ValidationScatterPlot from '@/components/ValidationScatterPlot';
+import CalibrationVsSimComparison from '@/components/CalibrationVsSimComparison';
 import StateRollupComparison from '@/components/StateRollupComparison';
 import UnifiedResultsTable from '@/components/UnifiedResultsTable';
 import { CalibrationDataPoint, ValidationDataPoint } from '@/types/calibration';
@@ -444,7 +445,7 @@ export default function Dashboard() {
                     className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm font-medium flex items-center gap-2"
                   >
                     <Share size={16} />
-                    Share Dashboard
+                    Share dashboard
                   </button>
                 )}
                 {!hasValidation && hasCalibration && (
@@ -538,6 +539,10 @@ export default function Dashboard() {
             {viewMode === 'explorer' && hasBoth && (
               <>
                 <SanityCheckPanel data={validationData} />
+                <CalibrationVsSimComparison
+                  calibrationData={data}
+                  validationData={validationData}
+                />
                 <StateRollupComparison
                   calibrationData={data}
                   validationData={validationData}

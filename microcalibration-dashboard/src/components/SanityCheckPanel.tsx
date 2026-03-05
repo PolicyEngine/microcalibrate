@@ -33,7 +33,7 @@ export default function SanityCheckPanel({ data }: SanityCheckPanelProps) {
       <div className="flex items-center gap-2 mb-4">
         <AlertTriangle className="w-5 h-5 text-red-600" />
         <h3 className="text-lg font-semibold text-red-800">
-          {failures.length} Sanity Check Failure{failures.length !== 1 ? 's' : ''}
+          {failures.length} sanity check failure{failures.length !== 1 ? 's' : ''}
         </h3>
       </div>
 

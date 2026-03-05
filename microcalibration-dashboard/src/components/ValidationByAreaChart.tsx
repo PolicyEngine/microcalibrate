@@ -56,7 +56,7 @@ export default function ValidationByAreaChart({ data }: ValidationByAreaChartPro
 
     return (
       <div className="bg-white rounded-lg shadow-lg p-6">
-        <h2 className="text-xl font-semibold text-gray-900 mb-2">Relative Error by Target ({areaId})</h2>
+        <h2 className="text-xl font-semibold text-gray-900 mb-2">Relative error by target ({areaId})</h2>
         <p className="text-xs text-gray-500 mb-4">Top 30 targets by error. Capped at 500% for display.</p>
         <ResponsiveContainer width="100%" height={Math.max(400, varData.length * 24)}>
           <BarChart data={varData} layout="vertical" margin={{ left: 220, right: 30, top: 5, bottom: 5 }}>
@@ -84,7 +84,7 @@ export default function ValidationByAreaChart({ data }: ValidationByAreaChartPro
 
   return (
     <div className="bg-white rounded-lg shadow-lg p-6">
-      <h2 className="text-xl font-semibold text-gray-900 mb-4">Mean Relative Error by Area</h2>
+      <h2 className="text-xl font-semibold text-gray-900 mb-4">Mean relative error by area</h2>
       <ResponsiveContainer width="100%" height={Math.max(300, chartData.length * 28)}>
         <BarChart data={chartData} layout="vertical" margin={{ left: 60, right: 20, top: 5, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" />

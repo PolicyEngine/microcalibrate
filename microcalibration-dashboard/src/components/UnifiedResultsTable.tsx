@@ -140,7 +140,7 @@ export default function UnifiedResultsTable({ calibrationData, validationData }:
 
   return (
     <div className="bg-white rounded-lg shadow-lg p-6">
-      <h2 className="text-xl font-semibold text-gray-900 mb-4">Unified Results Explorer</h2>
+      <h2 className="text-xl font-semibold text-gray-900 mb-4">Unified results explorer</h2>
 
       <div className="flex flex-wrap gap-3 mb-4">
         <input
@@ -155,7 +155,7 @@ export default function UnifiedResultsTable({ calibrationData, validationData }:
           onChange={e => { setSourceFilter(e.target.value as SourceFilter); setCurrentPage(1); }}
           className="px-3 py-1.5 border border-gray-300 rounded-md text-sm"
         >
-          <option value="all">All Sources</option>
+          <option value="all">All sources</option>
           <option value="cal">Calibration (X*w)</option>
           <option value="val">Validation (Sim)</option>
         </select>
@@ -164,7 +164,7 @@ export default function UnifiedResultsTable({ calibrationData, validationData }:
           onChange={e => { setGeoFilter(e.target.value as GeoFilter); setCurrentPage(1); }}
           className="px-3 py-1.5 border border-gray-300 rounded-md text-sm"
         >
-          <option value="all">All Geo Levels</option>
+          <option value="all">All geo levels</option>
           <option value="national">National</option>
           <option value="district">District</option>
           <option value="state">State</option>
@@ -174,7 +174,7 @@ export default function UnifiedResultsTable({ calibrationData, validationData }:
           onChange={e => { setVariableFilter(e.target.value); setCurrentPage(1); }}
           className="px-3 py-1.5 border border-gray-300 rounded-md text-sm"
         >
-          <option value="">All Variables</option>
+          <option value="">All variables</option>
           {variables.map(v => <option key={v} value={v}>{v}</option>)}
         </select>
       </div>
