@@ -384,15 +384,33 @@ export default function Dashboard() {
                   <p className="text-sm text-gray-600 mb-2">
                     Drop <span className="font-mono text-gray-800">validation_results.csv</span> here
                   </p>
-                  <label className="inline-block bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 px-4 py-1.5 rounded text-sm cursor-pointer">
-                    Choose file
-                    <input
-                      type="file"
-                      accept=".csv"
-                      className="hidden"
-                      onChange={handleValFileSelect}
-                    />
-                  </label>
+                  <div className="flex items-center justify-center gap-3">
+                    <label className="inline-block bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 px-4 py-1.5 rounded text-sm cursor-pointer">
+                      Choose file
+                      <input
+                        type="file"
+                        accept=".csv"
+                        className="hidden"
+                        onChange={handleValFileSelect}
+                      />
+                    </label>
+                    <span className="text-xs text-gray-400">or</span>
+                    <button
+                      onClick={async () => {
+                        try {
+                          const res = await fetch('/validation_results.csv');
+                          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                          const content = await res.text();
+                          handleFileLoad(content, 'validation_results.csv (sample)');
+                        } catch (err) {
+                          setError(`Failed to load sample validation: ${err instanceof Error ? err.message : 'Unknown error'}`);
+                        }
+                      }}
+                      className="inline-block bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 px-4 py-1.5 rounded text-sm"
+                    >
+                      Load sample
+                    </button>
+                  </div>
                 </div>
               )}
             </div>

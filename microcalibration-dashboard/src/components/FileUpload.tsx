@@ -80,6 +80,25 @@ export default function FileUpload({
   const [hfPath, setHfPath] = useState('calibration/logs/calibration_log.csv');
   const [hfValPath, setHfValPath] = useState('calibration/logs/validation_results.csv');
   const [hfRevision, setHfRevision] = useState('main');
+  const [hfValExists, setHfValExists] = useState<boolean | null>(null);
+  const [hfValChecking, setHfValChecking] = useState(false);
+
+  // Check if the HF validation file exists whenever the path/repo/revision changes
+  useEffect(() => {
+    if (!hfValPath.trim() || !hfRepo.trim()) {
+      setHfValExists(null);
+      return;
+    }
+    const revision = hfRevision.trim() || 'main';
+    const url = `https://huggingface.co/${hfRepo.trim()}/resolve/${revision}/${hfValPath.trim()}`;
+    let cancelled = false;
+    setHfValChecking(true);
+    fetch(url, { method: 'HEAD' })
+      .then(res => { if (!cancelled) setHfValExists(res.ok); })
+      .catch(() => { if (!cancelled) setHfValExists(false); })
+      .finally(() => { if (!cancelled) setHfValChecking(false); });
+    return () => { cancelled = true; };
+  }, [hfRepo, hfValPath, hfRevision]);
 
   // Helper function to load a single artifact from deeplink parameters
   const loadArtifactFromDeeplink = useCallback(async (artifactInfo: GitHubArtifactInfo, githubToken: string): Promise<string> => {
@@ -556,6 +575,39 @@ export default function FileUpload({
     }
   }
 
+  async function handleSampleBothLoad() {
+    setIsLoading(true);
+    setError('');
+
+    try {
+      const [calResponse, valResponse] = await Promise.all([
+        fetch('/calibration_log.csv'),
+        fetch('/validation_results.csv'),
+      ]);
+      if (!calResponse.ok) throw new Error(`Failed to load calibration sample: HTTP ${calResponse.status}`);
+      if (!valResponse.ok) throw new Error(`Failed to load validation sample: HTTP ${valResponse.status}`);
+
+      const [calContent, valContent] = await Promise.all([
+        calResponse.text(),
+        valResponse.text(),
+      ]);
+
+      const samplingResult = sampleEpochs(calContent);
+      const calName = samplingResult.wasSampled
+        ? `calibration_log.csv (sampled ${samplingResult.sampledEpochs}/${samplingResult.originalEpochs} epochs)`
+        : 'calibration_log.csv';
+
+      onFileLoad(samplingResult.content, calName);
+      onFileLoad(valContent, 'validation_results.csv');
+
+      setLoadedFile(`${calName} + validation_results.csv`);
+    } catch (err) {
+      setError(`Failed to load sample data: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
   async function handleHuggingFaceLoad() {
     if (!hfRepo.trim() || !hfPath.trim()) {
       setError('Please fill in the repository and file path fields.');
@@ -667,16 +719,22 @@ export default function FileUpload({
     try {
       const revisionLabel = revision !== 'main' ? ` @${revision}` : '';
 
-      const calContent = await fetchOne(hfPath);
+      const [calContent, valContent] = await Promise.all([
+        fetchOne(hfPath),
+        fetchOne(hfValPath),
+      ]);
+
       const calFilename = `${hfPath.trim().split('/').pop()}${revisionLabel} (HF)`;
       const calSampled = sampleEpochs(calContent);
       const calDisplayName = calSampled.wasSampled
         ? `${calFilename} - sampled ${calSampled.sampledEpochs}/${calSampled.originalEpochs} epochs`
         : calFilename;
-      onFileLoad(calSampled.content, calDisplayName);
-
-      const valContent = await fetchOne(hfValPath);
       const valFilename = `${hfValPath.trim().split('/').pop()}${revisionLabel} (HF)`;
+
+      // Call both onFileLoad synchronously so React batches the state updates
+      // before re-rendering (avoids the calibration load unmounting FileUpload
+      // before the validation load runs)
+      onFileLoad(calSampled.content, calDisplayName);
       onFileLoad(valContent, valFilename);
 
       setLoadedFile(`${calDisplayName} + ${valFilename}`);
@@ -1466,21 +1524,34 @@ export default function FileUpload({
             <div className="flex items-start space-x-3">
               <Database className="w-6 h-6 text-blue-600 mt-1" />
               <div className="flex-1">
-                <h3 className="text-lg font-medium text-blue-900 mb-2">Load sample calibration data</h3>
+                <h3 className="text-lg font-medium text-blue-900 mb-2">Load sample data</h3>
                 <p className="text-blue-700 mb-4">
-                  Try the dashboard with sample calibration data showing income targets by age group over 500+ epochs.
+                  Try the dashboard with sample calibration and validation data from a real calibration run
+                  across 436 congressional districts and 19 national targets.
                 </p>
                 <ul className="text-sm text-blue-600 mb-4 space-y-1">
-                  <li>• Shows calibration for income_aged_20_30 and income_aged_40_50 targets</li>
-                  <li>• Demonstrates error reduction over training epochs</li>
+                  <li>• Calibration log: per-target X*w estimates over 500 epochs</li>
+                  <li>• Validation results: sim.calculate() vs targets across districts and states</li>
                 </ul>
-                <button
-                  onClick={handleSampleLoad}
-                  disabled={isLoading}
-                  className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isLoading ? 'Loading Sample...' : 'Load sample data'}
-                </button>
+                <div className="flex gap-3">
+                  <button
+                    onClick={handleSampleLoad}
+                    disabled={isLoading}
+                    className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isLoading ? 'Loading...' : 'Load calibration only'}
+                  </button>
+                  <button
+                    onClick={handleSampleBothLoad}
+                    disabled={isLoading}
+                    className="bg-blue-800 hover:bg-blue-900 text-white font-medium py-2 px-4 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isLoading ? 'Loading...' : 'Load both'}
+                  </button>
+                </div>
+                <p className="text-xs text-gray-500 mt-3">
+                  &quot;Load both&quot; loads calibration + validation for the Explorer tab.
+                </p>
               </div>
             </div>
           </div>
@@ -1801,7 +1872,7 @@ export default function FileUpload({
 
                 <div className="mb-3">
                   <label htmlFor="hf-val-path" className="block text-sm font-medium text-gray-700 mb-1">
-                    Validation file path <span className="text-gray-400 font-normal">(optional, for Load Both)</span>
+                    Validation file path <span className="text-gray-400 font-normal">(optional, for Load both)</span>
                   </label>
                   <input
                     id="hf-val-path"
@@ -1809,8 +1880,18 @@ export default function FileUpload({
                     value={hfValPath}
                     onChange={e => setHfValPath(e.target.value)}
                     placeholder="calibration/logs/validation_results.csv"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 ${
+                      hfValExists === false ? 'border-amber-400 bg-amber-50' : 'border-gray-300'
+                    }`}
                   />
+                  {hfValChecking && (
+                    <p className="text-xs text-gray-400 mt-1">Checking file...</p>
+                  )}
+                  {!hfValChecking && hfValExists === false && hfValPath.trim() && (
+                    <p className="text-xs text-amber-600 mt-1">
+                      File not found at this path. &quot;Load both&quot; is unavailable — you can still load the calibration file alone.
+                    </p>
+                  )}
                 </div>
 
                 <div className="mb-4">
@@ -1837,16 +1918,16 @@ export default function FileUpload({
                   </button>
                   <button
                     onClick={handleHuggingFaceBothLoad}
-                    disabled={isLoading || !hfRepo.trim() || !hfPath.trim() || !hfValPath.trim()}
+                    disabled={isLoading || !hfRepo.trim() || !hfPath.trim() || !hfValPath.trim() || hfValExists === false}
                     className="bg-purple-800 hover:bg-purple-900 text-white font-medium py-2 px-4 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {isLoading ? 'Loading...' : 'Load Both'}
+                    {isLoading ? 'Loading...' : 'Load both'}
                   </button>
                 </div>
 
                 <p className="text-xs text-gray-500 mt-3">
                   Works with public repositories. &quot;Load&quot; fetches the calibration file only.
-                  &quot;Load Both&quot; fetches calibration + validation for the Combined tab.
+                  &quot;Load both&quot; fetches calibration + validation for the Explorer tab.
                 </p>
               </div>
             </div>
