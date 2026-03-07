@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { CalibrationDataPoint } from '@/types/calibration';
 import { BarChart3 } from 'lucide-react';
+import { colors } from '@policyengine/design-system/tokens/colors';
 import { sortTargetsWithRelevance, getSortedUniqueTargets } from '@/utils/targetOrdering';
 
 interface SingleDatasetBarChartProps {
@@ -303,10 +304,10 @@ export default function SingleDatasetBarChart({ data }: SingleDatasetBarChartPro
               />
               
               {/* Target Value Bars */}
-              <Bar dataKey="target" name="Target value" fill="#16a34a" />
+              <Bar dataKey="target" name="Target value" fill={colors.success} />
               
               {/* Estimates */}
-              <Bar dataKey="estimate" name="Estimate" fill="#2563eb" />
+              <Bar dataKey="estimate" name="Estimate" fill={colors.blue[500]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
