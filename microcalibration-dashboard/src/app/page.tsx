@@ -53,6 +53,7 @@ export default function Dashboard() {
 
   // Validation drop zone state
   const [valDragOver, setValDragOver] = useState(false);
+  const [valLoading, setValLoading] = useState(false);
 
   const handleFileLoad = useCallback((content: string, name: string) => {
     try {
@@ -176,14 +177,52 @@ export default function Dashboard() {
     }
   };
 
+  const handleValidationLoad = useCallback((content: string, name: string) => {
+    setValLoading(true);
+    setError('');
+    // Defer parsing to next frame so the spinner renders before heavy work
+    requestAnimationFrame(() => {
+      try {
+        // Check if this is actually a validation CSV before parsing
+        if (!isValidationCsv(content)) {
+          setError(
+            `"${name}" does not appear to be a validation CSV. ` +
+            'Expected columns: sim_value, target_value, variable, area_type, area_id, etc.'
+          );
+          return;
+        }
+        const parsed = parseValidationCSV(content);
+        if (parsed.length === 0) {
+          setError(`"${name}" was parsed but contained no valid rows (need sim_value and target_value columns).`);
+          return;
+        }
+        setValidationData(parsed);
+        setValidationFilename(name);
+        setError('');
+        if (data.length > 0) {
+          setViewMode('explorer');
+        } else {
+          setViewMode('validation');
+        }
+      } catch (err) {
+        console.error('Error parsing validation CSV:', err);
+        setError(err instanceof Error ? err.message : 'Failed to parse validation CSV file');
+      } finally {
+        setValLoading(false);
+      }
+    });
+  }, [data.length]);
+
   const handleValFileDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setValDragOver(false);
     const file = e.dataTransfer.files[0];
     if (!file) return;
+    setError('');
+    setValLoading(true);
     const reader = new FileReader();
     reader.onload = (ev) => {
-      handleFileLoad(ev.target?.result as string, file.name);
+      handleValidationLoad(ev.target?.result as string, file.name);
     };
     reader.readAsText(file);
   };
@@ -191,9 +230,11 @@ export default function Dashboard() {
   const handleValFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    setError('');
+    setValLoading(true);
     const reader = new FileReader();
     reader.onload = (ev) => {
-      handleFileLoad(ev.target?.result as string, file.name);
+      handleValidationLoad(ev.target?.result as string, file.name);
     };
     reader.readAsText(file);
     e.target.value = '';
@@ -234,6 +275,7 @@ export default function Dashboard() {
     setError('');
     setShowDashboard(false);
     setViewMode('calibration');
+    setValLoading(false);
     setDeeplinkParams(null);
     setIsLoadingFromDeeplink(false);
     setGithubArtifactInfo(null);
@@ -313,7 +355,7 @@ export default function Dashboard() {
                   <FileUpload
                     onFileLoad={handleFileLoad}
                     onCompareLoad={handleComparisonLoad}
-                    onViewDashboard={() => setShowDashboard(true)}
+                    onViewDashboard={() => { setError(''); setShowDashboard(true); }}
                     deeplinkParams={deeplinkParams}
                     isLoadingFromDeeplink={isLoadingFromDeeplink}
                     onDeeplinkLoadComplete={(primary, secondary) => {
@@ -322,6 +364,7 @@ export default function Dashboard() {
                       setGithubArtifactInfo(params);
                       setIsLoadingFromDeeplink(false);
                       if (primary) {
+                        setError('');
                         setShowDashboard(true);
                       }
                     }}
@@ -371,6 +414,11 @@ export default function Dashboard() {
                     </button>
                   </div>
                 </div>
+              ) : valLoading ? (
+                <div className="px-6 py-8 text-center m-4">
+                  <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600" />
+                  <p className="text-sm text-gray-600 mt-2">Loading validation data...</p>
+                </div>
               ) : (
                 <div
                   className={`px-6 py-8 text-center border-2 border-dashed m-4 rounded-lg transition-colors ${
@@ -401,7 +449,7 @@ export default function Dashboard() {
                           const res = await fetch('/validation_results.csv');
                           if (!res.ok) throw new Error(`HTTP ${res.status}`);
                           const content = await res.text();
-                          handleFileLoad(content, 'validation_results.csv (sample)');
+                          handleValidationLoad(content, 'validation_results.csv (sample)');
                         } catch (err) {
                           setError(`Failed to load sample validation: ${err instanceof Error ? err.message : 'Unknown error'}`);
                         }
@@ -418,7 +466,7 @@ export default function Dashboard() {
             {/* View Dashboard button */}
             {(hasCalibration || hasValidation) && (
               <button
-                onClick={() => setShowDashboard(true)}
+                onClick={() => { setError(''); setShowDashboard(true); }}
                 className="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-lg text-lg font-semibold shadow-lg transition-colors"
               >
                 View dashboard
