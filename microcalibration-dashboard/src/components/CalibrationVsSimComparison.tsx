@@ -28,8 +28,12 @@ interface JoinedRow {
   gap: number;
 }
 
+type SortKey = keyof JoinedRow;
+
 export default function CalibrationVsSimComparison({ calibrationData, validationData }: CalibrationVsSimComparisonProps) {
   const [filterVar, setFilterVar] = useState('');
+  const [sortKey, setSortKey] = useState<SortKey>('target_name');
+  const [sortAsc, setSortAsc] = useState(true);
 
   const joined = useMemo(() => {
     // Get final epoch calibration data
@@ -67,6 +71,28 @@ export default function CalibrationVsSimComparison({ calibrationData, validation
     return joined.filter(r => globMatch(filterVar, r.target_name));
   }, [joined, filterVar]);
 
+  const sorted = useMemo(() => {
+    return [...filtered].sort((a, b) => {
+      const va = a[sortKey];
+      const vb = b[sortKey];
+      if (typeof va === 'number' && typeof vb === 'number') {
+        return sortAsc ? va - vb : vb - va;
+      }
+      const sa = String(va);
+      const sb = String(vb);
+      return sortAsc ? sa.localeCompare(sb) : sb.localeCompare(sa);
+    });
+  }, [filtered, sortKey, sortAsc]);
+
+  const handleSort = (key: SortKey) => {
+    if (key === sortKey) {
+      setSortAsc(!sortAsc);
+    } else {
+      setSortKey(key);
+      setSortAsc(false);
+    }
+  };
+
   const regressions = useMemo(() => {
     const regressed: JoinedRow[] = [];
     for (const r of joined) {
@@ -99,8 +125,8 @@ export default function CalibrationVsSimComparison({ calibrationData, validation
     );
   }
 
-  const meanAbsGap = filtered.reduce((s, r) => s + Math.abs(r.gap), 0) / filtered.length;
-  const nWorse = filtered.filter(r => Math.abs(r.sim_error) > Math.abs(r.xw_error)).length;
+  const meanAbsGap = sorted.reduce((s, r) => s + Math.abs(r.gap), 0) / sorted.length;
+  const nWorse = sorted.filter(r => Math.abs(r.sim_error) > Math.abs(r.xw_error)).length;
   const nRegressed10pct = regressions.length;
 
   const bannerColor = nRegressed10pct === 0
@@ -121,7 +147,7 @@ export default function CalibrationVsSimComparison({ calibrationData, validation
       <p className="text-xs text-gray-500 mb-4">
         Compares the calibration optimizer&apos;s estimate (X*w) against what sim.calculate() actually produces for the same targets.
         The <strong>gap</strong> = sim_error &minus; xw_error, i.e. how much the simulation drifted from what calibration predicted.
-        Negative gaps (green) mean sim is closer to the target than X*w; positive gaps (red) mean sim got worse.
+        Small gaps (green) mean sim and X*w are close; large gaps (orange) indicate significant drift between the two.
       </p>
 
       {/* Regression severity banner */}
@@ -154,7 +180,7 @@ export default function CalibrationVsSimComparison({ calibrationData, validation
         </div>
         <div className="bg-gray-50 rounded-lg p-3 text-center">
           <div className={`text-2xl font-bold ${nWorse > joined.length / 2 ? 'text-red-600' : 'text-green-600'}`}>
-            {nWorse}/{filtered.length}
+            {nWorse}/{sorted.length}
           </div>
           <div className="text-xs text-gray-500">Sim worse than X*w</div>
         </div>
@@ -168,26 +194,41 @@ export default function CalibrationVsSimComparison({ calibrationData, validation
         className="px-3 py-1.5 border border-gray-300 rounded-md text-sm mb-3 w-full max-w-md focus:outline-none focus:ring-2 focus:ring-blue-500"
       />
 
-      <p className="text-xs text-gray-500 mb-2">{filtered.length} rows</p>
+      <p className="text-xs text-gray-500 mb-2">{sorted.length} rows</p>
 
       <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50 sticky top-0">
             <tr>
-              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Target Name</th>
-              <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Target</th>
-              <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">X*w Est.</th>
-              <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Sim Value</th>
-              <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">X*w Error</th>
-              <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Sim Error</th>
-              <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Gap</th>
+              {([
+                ['target_name', 'Target Name', 'text-left'],
+                ['target_value', 'Target', 'text-right'],
+                ['xw_estimate', 'X*w Est.', 'text-right'],
+                ['sim_value', 'Sim Value', 'text-right'],
+                ['xw_error', 'X*w Error', 'text-right'],
+                ['sim_error', 'Sim Error', 'text-right'],
+                ['gap', 'Gap', 'text-right'],
+              ] as [SortKey, string, string][]).map(([key, label, align]) => (
+                <th
+                  key={key}
+                  className={`px-3 py-2 ${align} text-xs font-medium text-gray-500 uppercase cursor-pointer hover:text-gray-700 select-none`}
+                  onClick={() => handleSort(key)}
+                >
+                  {label} {sortKey === key ? (sortAsc ? '▲' : '▼') : ''}
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {filtered.slice(0, 500).map((r, i) => (
+            {sorted.slice(0, 500).map((r, i) => (
               <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                <td className="px-3 py-2 text-sm font-mono text-gray-900 max-w-xs truncate" title={r.target_name}>
-                  {r.target_name}
+                <td className="px-3 py-2 text-sm font-mono text-gray-900 max-w-64" title={r.target_name}>
+                  <div
+                    className="overflow-x-auto whitespace-nowrap [&::-webkit-scrollbar]:hidden"
+                    style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                  >
+                    {r.target_name}
+                  </div>
                 </td>
                 <td className="px-3 py-2 text-sm text-gray-700 text-right">{formatNumber(r.target_value)}</td>
                 <td className="px-3 py-2 text-sm text-gray-700 text-right">{formatNumber(r.xw_estimate)}</td>
@@ -203,7 +244,7 @@ export default function CalibrationVsSimComparison({ calibrationData, validation
                   </span>
                 </td>
                 <td className="px-3 py-2 text-sm text-right">
-                  <span className={r.gap > 0 ? 'text-red-600' : 'text-green-600'}>
+                  <span className={Math.abs(r.gap) / Math.abs(r.target_value) < 0.05 ? 'text-green-600' : 'text-orange-600'}>
                     {formatNumber(r.gap)}
                   </span>
                 </td>
