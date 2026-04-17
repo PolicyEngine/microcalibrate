@@ -69,6 +69,7 @@ def reweight(
     csv_path: Optional[str] = None,
     device: Optional[str] = None,
     logger: Optional[logging.Logger] = None,
+    seed: Optional[int] = None,
 ) -> tuple[np.ndarray, Union[np.ndarray, None], pd.DataFrame]:
     """Reweight the original weights based on the loss matrix and targets.
 
@@ -92,6 +93,10 @@ def reweight(
         csv_path (Optional[str]): Optional path to save the performance metrics as a CSV file.
         device (Optional[str]): Device to run the calibration on (e.g., 'cpu' or 'cuda'). If None, uses the default device.
         logger (Optional[logging.Logger]): Logger for logging progress and metrics.
+        seed (Optional[int]): Random seed used for both the NumPy RNG that
+            draws the initial weight noise and torch's generator. When
+            None, a non-deterministic draw is used (preserving the
+            historical behaviour).
 
     Returns:
         np.ndarray: Reweighted weights.
@@ -99,6 +104,14 @@ def reweight(
     """
     if csv_path is not None and not csv_path.endswith(".csv"):
         raise ValueError("csv_path must be a string ending with .csv")
+
+    # Local RNGs so callers get deterministic behaviour without us
+    # mutating global numpy / torch seeds as a side effect.
+    np_rng = np.random.default_rng(seed)
+    if seed is not None:
+        torch.manual_seed(seed)
+        if torch.cuda.is_available():
+            torch.cuda.manual_seed_all(seed)
 
     logger.info(
         f"Starting calibration process for targets {target_names}: {targets_array}"
@@ -114,7 +127,7 @@ def reweight(
         device=device,
     )
 
-    random_noise = np.random.random(original_weights.shape) * noise_level
+    random_noise = np_rng.random(original_weights.shape) * noise_level
     # Guard against non-positive values (e.g. zero initial weights with
     # noise_level=0) which would produce -inf in log space and NaN
     # gradients downstream.
