@@ -65,6 +65,9 @@ class Calibration:
             sparse_learning_rate (float): Learning rate for the regularizing optimizer. Defaults to 0.2.
             regularize_with_l0 (Optional[bool]): Whether to apply L0 regularization. Defaults to False.
         """
+        # Resolve the torch device exactly once. The fallback chain
+        # (cuda -> mps -> cpu) runs when ``device`` is None so callers
+        # automatically get the best available accelerator.
         if device is not None:
             self.device = torch.device(device)
         else:
@@ -97,17 +100,14 @@ class Calibration:
         self.regularize_with_l0 = regularize_with_l0
         self.seed = seed
 
-        if device is not None:
-            self.device = torch.device(device)
+        # Seed torch on every path, and CUDA as well when we actually
+        # resolved to a CUDA device, so stochastic CUDA kernels are
+        # reproducible. ``self.device`` is a torch.device, so comparing
+        # its ``.type`` to the string "cuda" is the correct check.
+        if self.seed is not None:
             torch.manual_seed(self.seed)
-        else:
-            self.device = torch.device(
-                "cuda"
-                if torch.cuda.is_available()
-                else "mps" if torch.mps.is_available() else "cpu"
-            )
-            if self.device == "cuda":
-                torch.cuda.manual_seed(self.seed)
+            if self.device.type == "cuda":
+                torch.cuda.manual_seed_all(self.seed)
 
         self.estimate_matrix = None
         self.targets = None
