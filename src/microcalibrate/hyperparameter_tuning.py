@@ -274,10 +274,22 @@ def _create_objective_function(
             return 1e10
 
         finally:
-            # Restore original state
+            # Restore original state. Direct assignment (rather than a
+            # conditional "restore only if not None") is correct here:
+            # if the original value was None we must restore it to None,
+            # otherwise the last holdout set's list sticks around and
+            # leaks into any subsequent calibrate() call.
             calibration.excluded_targets = original_state["excluded_targets"]
-            calibration.targets = original_state["targets"]
-            calibration.target_names = original_state["target_names"]
+            calibration.targets = (
+                original_state["targets"].copy()
+                if original_state["targets"] is not None
+                else None
+            )
+            calibration.target_names = (
+                original_state["target_names"].copy()
+                if original_state["target_names"] is not None
+                else None
+            )
             calibration.exclude_targets()
 
     return objective
