@@ -181,6 +181,7 @@ class Calibration:
             sparse_learning_rate=self.sparse_learning_rate,
             regularize_with_l0=self.regularize_with_l0,
             logger=self.logger,
+            seed=self.seed,
         )
 
         self.weights = new_weights
