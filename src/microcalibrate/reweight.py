@@ -224,7 +224,14 @@ def reweight(
             l_main = loss(estimate, targets, normalization_factor)
             l = l_main + l0_lambda * gates.get_penalty()
             close = pct_close(estimate, targets)
-            if i % tracking_n / 2 == 0:
+            # The sparse loop runs 2x as many epochs as the dense loop,
+            # so log twice as often (half the dense tracking stride).
+            # Without explicit parentheses the original expression
+            # `i % tracking_n / 2 == 0` parses as
+            # `(i % tracking_n) / 2 == 0`, which is equivalent to
+            # `i % tracking_n == 0` and silently loses the x2 density.
+            sparse_tracking_n = max(1, tracking_n // 2)
+            if i % sparse_tracking_n == 0:
                 epochs_sparse.append(i)
                 loss_over_epochs_sparse.append(l.item())
                 pct_close_over_epochs_sparse.append(close)
