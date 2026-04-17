@@ -79,8 +79,15 @@ def reweight(
     )
 
     random_noise = np.random.random(original_weights.shape) * noise_level
+    # Guard against non-positive values (e.g. zero initial weights with
+    # noise_level=0) which would produce -inf in log space and NaN
+    # gradients downstream.
+    initial_weights = np.maximum(
+        np.asarray(original_weights, dtype=np.float64) + random_noise,
+        1e-12,
+    )
     weights = torch.tensor(
-        np.log(original_weights + random_noise),
+        np.log(initial_weights),
         requires_grad=True,
         dtype=torch.float32,
         device=device,
@@ -119,7 +126,6 @@ def reweight(
     loss_over_epochs = []
     estimates_over_epochs = []
     pct_close_over_epochs = []
-    max_epochs = epochs - 1 if epochs > 0 else 0
     epochs_list = []
 
     for i in iterator:
@@ -139,7 +145,11 @@ def reweight(
                 }
             )
 
-        if i % tracking_n == 0:
+        # Log a tracking row every `tracking_n` epochs and always on the
+        # final epoch so the tracker ends with the state that corresponds
+        # to the returned weights (post last step = start of next epoch).
+        is_final_epoch = i == epochs - 1
+        if i % tracking_n == 0 or is_final_epoch:
             epochs_list.append(i)
             loss_over_epochs.append(l.item())
             pct_close_over_epochs.append(close)
@@ -155,9 +165,11 @@ def reweight(
                     f"({'improving' if loss_change > 0 else 'worsening'})"
                 )
 
-        if i != max_epochs - 1:
-            l.backward()
-            optimizer.step()
+        # Step every epoch. The returned final_weights reflect the state
+        # after the last step; the final logged row above reflects the
+        # pre-step state of the same (last) epoch.
+        l.backward()
+        optimizer.step()
 
     tracker_dict = {
         "epochs": epochs_list,
@@ -189,8 +201,13 @@ def reweight(
         logger.info("Applying L0 regularization to the weights.")
 
         # Sparse, regularized weights depending on temperature, init_mean, l0_lambda -----
+        # Guard against zero/negative initial weights which would produce
+        # -inf or NaN after np.log and poison gradients.
+        safe_original_weights = np.maximum(
+            np.asarray(original_weights, dtype=np.float64), 1e-12
+        )
         weights = torch.tensor(
-            np.log(original_weights),
+            np.log(safe_original_weights),
             requires_grad=True,
             dtype=torch.float32,
             device=device,
@@ -245,7 +262,13 @@ def reweight(
                     )
             if start_loss is None:
                 start_loss = l.item()
-            loss_rel_change = (l.item() - start_loss) / start_loss
+            # Guard against a zero starting loss (trivial/pre-calibrated
+            # data, or L0 warmup pushing the penalty term near zero) to
+            # avoid ZeroDivisionError / inf in the tqdm postfix.
+            if abs(start_loss) < 1e-12:
+                loss_rel_change = 0.0
+            else:
+                loss_rel_change = (l.item() - start_loss) / start_loss
             l.backward()
             iterator.set_postfix(
                 {"loss": l.item(), "loss_rel_change": loss_rel_change}
