@@ -13,6 +13,42 @@ from .utils.log_performance import log_performance_over_epochs
 from .utils.metrics import loss, pct_close
 
 
+def dropout_weights(weights: torch.Tensor, p: float) -> torch.Tensor:
+    """Apply inverted dropout to weights held in log space.
+
+    ``weights`` represents log(w); downstream code computes
+    ``torch.exp(weights_)`` to recover linear-space weights. Dropping
+    an entry therefore means sending its log to ``-inf`` so that
+    ``exp`` returns 0. Surviving entries are scaled by ``1/(1-p)`` in
+    linear space (equivalently, ``-log(1-p)`` added in log space) so
+    the expected linear-space sum is preserved, matching standard
+    inverted dropout semantics.
+
+    Args:
+        weights (torch.Tensor): Current weights in log space.
+        p (float): Probability of dropping each weight, in [0, 1].
+
+    Returns:
+        torch.Tensor: Weights in log space after applying dropout.
+    """
+    if p == 0:
+        return weights
+    if p < 0 or p > 1:
+        raise ValueError(f"dropout_rate must be in [0, 1]; got {p}.")
+    if p == 1:
+        # Everything is dropped: zero all linear-space weights. The
+        # result has no gradient path back to ``weights`` because every
+        # entry is a constant -inf; callers must not rely on training
+        # under full dropout.
+        return torch.full_like(weights, float("-inf"))
+    # ``survive_mask`` is True where an entry SURVIVES.
+    survive_mask = torch.rand_like(weights) >= p
+    neg_inf = torch.full_like(weights, float("-inf"))
+    scale = -float(np.log1p(-p))  # == log(1/(1-p))
+    scaled = weights + scale
+    return torch.where(survive_mask, scaled, neg_inf)
+
+
 def reweight(
     original_weights: np.ndarray,
     estimate_function: Callable[[Tensor], Tensor],
@@ -97,25 +133,6 @@ def reweight(
         f"Initial weights after noise - mean: {torch.exp(weights).mean().item():.4f}, "
         f"std: {torch.exp(weights).std():.4f}"
     )
-
-    def dropout_weights(weights: torch.Tensor, p: float) -> torch.Tensor:
-        """Apply dropout to the weights.
-
-        Args:
-            weights (torch.Tensor): Current weights in log space.
-            p (float): Probability of dropping weights.
-
-        Returns:
-            torch.Tensor: Weights after applying dropout.
-        """
-        if p == 0:
-            return weights
-        total_weight = weights.sum()
-        mask = torch.rand_like(weights) < p
-        masked_weights = weights.clone()
-        masked_weights[mask] = 0
-        masked_weights = masked_weights / masked_weights.sum() * total_weight
-        return masked_weights
 
     optimizer = torch.optim.Adam([weights], lr=learning_rate)
 
