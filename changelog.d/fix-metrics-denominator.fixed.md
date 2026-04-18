@@ -1,1 +1,0 @@
-Guard the `(target + 1)` denominator in loss() and pct_close() against targets equal to -1 (divide-by-zero -> Inf) and extend the guard in loss() to reject non-finite rel_error (not just NaN). For any target with target+1 comfortably positive the numeric result is unchanged.

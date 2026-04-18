@@ -1,3 +1,17 @@
+## [0.21.3] - 2026-04-18
+
+### Fixed
+
+- Collapse duplicate device-init block in Calibration.__init__. The second copy re-ran the fallback chain, contained an unreachable else branch, and checked `self.device == "cuda"` (a torch.device vs string comparison that never triggered CUDA seeding on the default code path). torch is now seeded uniformly on every path and `torch.cuda.manual_seed_all` is invoked whenever `self.device.type == "cuda"`.
+- Reimplement dropout_weights() correctly for log-space weights. The previous implementation set masked log-entries to 0 (exp(0) = 1, not dropped) and divided by the sum of logs, which on realistic weight scales could cross zero and inject Inf/NaN into training. The new implementation applies standard inverted dropout: dropped entries go to -inf in log space (and therefore zero in linear space), survivors are scaled by 1/(1-p) so the expected linear-space sum is preserved.
+- Fix holdout state restoration and seed-namespace collision. `evaluate_holdout_robustness` and `tune_l0_hyperparameters` only restored captured attributes whose value was not None, so `excluded_targets=None` callers had the last holdout set's target list silently stick to the calibrator. Restoration is now unconditional. Robustness evaluation now uses `seed + 10_000` when generating its holdout sets instead of `seed + 1`, avoiding the deterministic index-aligned collision with tuning's holdout sets that leaked tuning data into "independent" evaluation.
+- Guard the `(target + 1)` denominator in loss() and pct_close() against targets equal to -1 (divide-by-zero -> Inf) and extend the guard in loss() to reject non-finite rel_error (not just NaN). For any target with target+1 comfortably positive the numeric result is unchanged.
+- Seed the NumPy RNG used for initial weight noise in reweight(). Previously only torch was seeded, so two Calibration runs with the same seed produced different initial log-weights (and therefore different trajectories), breaking the documented reproducibility guarantee. reweight() now accepts an explicit seed parameter, uses a local numpy.random.default_rng so the caller's global state is not mutated, and Calibration threads its seed through.
+- Fix three latent bugs in reweight(): (1) the final dense-epoch gradient step was being silently skipped due to an off-by-one guard, so the returned weights were inconsistent with the tracked estimates; (2) np.log(original_weights) produced -inf and poisoned gradients when any initial weight was zero; and (3) the sparse L0 loop raised ZeroDivisionError in its tqdm postfix when start_loss happened to be zero.
+- Fix operator-precedence bug in the sparse L0 tracking condition. `i % tracking_n / 2 == 0` parsed as `(i % tracking_n) / 2 == 0`, which is equivalent to `i % tracking_n == 0`, so the intended 2x logging density was silently lost. The sparse loop now logs at stride `max(1, tracking_n // 2)` so its tracked DataFrame has ~2x the row density of the dense loop, matching the 2x epoch count.
+- Migrated versioning workflow from expired `POLICYENGINE_GITHUB` PAT to a short-lived GitHub App token, matching the pattern used by `policyengine-us`, `policyengine-core`, and `microdf`.
+
+
 ## [0.21.2] - 2026-02-24
 
 ### Changed
