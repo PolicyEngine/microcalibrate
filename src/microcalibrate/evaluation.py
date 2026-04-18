@@ -175,15 +175,15 @@ def _evaluate_single_holdout_robustness(
             final_weights, dtype=torch.float32, device=calibration.device
         )
 
-        # Get estimates for all targets using original estimate function/matrix
-        if calibration.original_estimate_matrix is not None:
-            original_matrix_tensor = torch.tensor(
-                calibration.original_estimate_matrix.values,
-                dtype=torch.float32,
-                device=calibration.device,
-            )
+        # Get estimates for all targets using the cached full matrix
+        # tensor (built once in Calibration.__init__). Falls back to
+        # the user-supplied estimate_function for callers that passed
+        # an opaque function rather than a dense matrix.
+        if calibration.estimate_matrix_tensor is not None:
             all_estimates = (
-                (weights_tensor @ original_matrix_tensor).cpu().numpy()
+                (weights_tensor @ calibration.estimate_matrix_tensor)
+                .cpu()
+                .numpy()
             )
         else:
             all_estimates = (
