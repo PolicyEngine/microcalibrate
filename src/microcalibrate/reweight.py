@@ -10,7 +10,7 @@ from torch import Tensor
 from tqdm import tqdm
 
 from .utils.log_performance import log_performance_over_epochs
-from .utils.metrics import loss, pct_close
+from .utils.metrics import _safe_denominator, loss, pct_close
 
 
 def dropout_weights(weights: torch.Tensor, p: float) -> torch.Tensor:
@@ -70,6 +70,8 @@ def reweight(
     device: Optional[str] = None,
     logger: Optional[logging.Logger] = None,
     seed: Optional[int] = None,
+    batch_size: Optional[int] = None,
+    estimate_matrix: Optional[torch.Tensor] = None,
 ) -> tuple[np.ndarray, Union[np.ndarray, None], pd.DataFrame]:
     """Reweight the original weights based on the loss matrix and targets.
 
@@ -97,6 +99,20 @@ def reweight(
             draws the initial weight noise and torch's generator. When
             None, a non-deterministic draw is used (preserving the
             historical behaviour).
+        batch_size (Optional[int]): If set, the per-epoch gradient is
+            accumulated over disjoint record batches of this size. This
+            keeps the autograd activation O(batch_size * n_targets)
+            instead of O(n_records * n_targets) — critical at v7 scale
+            (n_records > 1e6). Requires ``estimate_matrix`` to be
+            provided; not supported for arbitrary ``estimate_function``.
+            None (default) preserves the existing full-batch path bit-
+            for-bit. batch_size >= n_records degenerates to full-batch.
+        estimate_matrix (Optional[torch.Tensor]): The float32 estimate
+            matrix of shape (n_records, n_targets) backing the
+            ``estimate_function``. Required when ``batch_size`` is set;
+            ignored otherwise. Callers passing a custom
+            ``estimate_function`` that does not correspond to a dense
+            matrix must use full-batch mode.
 
     Returns:
         np.ndarray: Reweighted weights.
@@ -149,6 +165,23 @@ def reweight(
 
     optimizer = torch.optim.Adam([weights], lr=learning_rate)
 
+    n_records = original_weights.shape[0]
+    use_batched = batch_size is not None and batch_size < n_records
+    if use_batched and estimate_matrix is None:
+        raise ValueError(
+            "batch_size requires `estimate_matrix` to be provided so the "
+            "reweight loop can index per-batch rows. Pass the torch "
+            "estimate tensor explicitly, or leave batch_size=None to use "
+            "the full-batch path with an arbitrary estimate_function."
+        )
+    if use_batched and regularize_with_l0:
+        raise ValueError(
+            "batch_size is not yet supported with regularize_with_l0=True. "
+            "The L0 sparse-reweighting loop uses a different objective and "
+            "is not yet batched. Choose one: disable L0 for the dense "
+            "calibration, or leave batch_size=None."
+        )
+
     iterator = tqdm(range(epochs), desc="Reweighting progress", unit="epoch")
     tracking_n = max(1, epochs // 10) if epochs > 10 else 1
     progress_update_interval = 10
@@ -161,9 +194,61 @@ def reweight(
     for i in iterator:
         optimizer.zero_grad()
         weights_ = dropout_weights(weights, dropout_rate)
-        estimate = estimate_function(torch.exp(weights_))
-        l = loss(estimate, targets, normalization_factor)
-        close = pct_close(estimate, targets)
+
+        if use_batched:
+            # Two-pass batched gradient accumulation.
+            #
+            # The chi-squared loss is separable across record batches
+            # given the per-target coefficient c_j = d(loss)/d(S_j),
+            # because S_j (the weighted sum of estimate_matrix column j)
+            # is itself a sum over records. Phase 1 accumulates S under
+            # no_grad; Phase 2 computes, per batch,
+            # virtual_loss_batch = c · (exp(w_log[batch]) @ A[batch])
+            # and calls .backward() to accumulate gradients into weights.
+            # The sum of virtual_loss_batch over batches has exactly the
+            # same gradient as the full-batch loss; peak autograd
+            # activation is O(batch_size * n_targets).
+            n_targets = targets.shape[0]
+            with torch.no_grad():
+                exp_w_ = torch.exp(weights_)
+                S = torch.zeros(n_targets, dtype=torch.float32, device=device)
+                for start in range(0, n_records, batch_size):
+                    end = min(start + batch_size, n_records)
+                    S += exp_w_[start:end] @ estimate_matrix[start:end]
+                # Coefficient c_j = d(loss)/d(S_j). Using the same
+                # clamped denominator as the reference loss so batched
+                # and full-batch paths agree on targets near -1.
+                # loss = mean(((S-t)+1) / _safe_denominator(t))^2 * normalization_factor)
+                # => d(loss)/d(S_j) = 2 * ((S_j - t_j + 1) / denom_j^2) / n_targets * normalization_factor_j
+                denominator = _safe_denominator(targets)
+                rel_error_unrooted = ((S - targets) + 1) / denominator
+                coef = 2.0 * rel_error_unrooted / denominator / n_targets
+                if normalization_factor is not None:
+                    coef = coef * normalization_factor
+
+            # Phase 2: per-batch backward with retain_graph until the
+            # final batch, so weights_ → weights graph persists across
+            # the multiple .backward() calls within this epoch.
+            batch_starts = list(range(0, n_records, batch_size))
+            for batch_idx, start in enumerate(batch_starts):
+                end = min(start + batch_size, n_records)
+                batch_estimate = (
+                    torch.exp(weights_[start:end]) @ estimate_matrix[start:end]
+                )
+                virtual_loss = (coef * batch_estimate).sum()
+                retain = batch_idx < len(batch_starts) - 1
+                virtual_loss.backward(retain_graph=retain)
+
+            # For logging only: full-batch-equivalent loss value,
+            # computed from S (no additional activation memory).
+            with torch.no_grad():
+                estimate = S
+                l = loss(estimate, targets, normalization_factor)
+            close = pct_close(estimate, targets)
+        else:
+            estimate = estimate_function(torch.exp(weights_))
+            l = loss(estimate, targets, normalization_factor)
+            close = pct_close(estimate, targets)
 
         if i % progress_update_interval == 0:
             iterator.set_postfix(
@@ -197,8 +282,11 @@ def reweight(
 
         # Step every epoch. The returned final_weights reflect the state
         # after the last step; the final logged row above reflects the
-        # pre-step state of the same (last) epoch.
-        l.backward()
+        # pre-step state of the same (last) epoch. In the batched path
+        # gradients were already accumulated above, so we only call
+        # l.backward() on the full-batch path.
+        if not use_batched:
+            l.backward()
         optimizer.step()
 
     tracker_dict = {

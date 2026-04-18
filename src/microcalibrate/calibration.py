@@ -42,6 +42,7 @@ class Calibration:
         sparse_learning_rate: Optional[float] = 0.2,
         regularize_with_l0: Optional[bool] = False,
         seed: Optional[int] = 42,
+        batch_size: Optional[int] = None,
     ):
         """Initialize the Calibration class.
 
@@ -64,6 +65,7 @@ class Calibration:
             temperature (float): Temperature parameter for L0 regularization, controlling the sparsity of the model. Defaults to 0.5.
             sparse_learning_rate (float): Learning rate for the regularizing optimizer. Defaults to 0.2.
             regularize_with_l0 (Optional[bool]): Whether to apply L0 regularization. Defaults to False.
+            batch_size (Optional[int]): If set, the per-epoch gradient is accumulated over disjoint record batches of this size (two-pass: accumulate the chi-squared estimate under no_grad, then per-batch backward with pre-computed target-coefficient). This keeps peak activation memory O(batch_size * n_targets) instead of O(n_records * n_targets), at the cost of modest fp32 rounding during accumulation. None (default) = full-batch, matching prior behavior exactly.
         """
         # Resolve the torch device exactly once. The fallback chain
         # (cuda -> mps -> cpu) runs when ``device`` is None so callers
@@ -99,6 +101,13 @@ class Calibration:
         self.sparse_learning_rate = sparse_learning_rate
         self.regularize_with_l0 = regularize_with_l0
         self.seed = seed
+        self.batch_size = batch_size
+
+        # Authoritative float32 copy of the estimate matrix; the
+        # pandas DataFrame is released after __init__ so its storage is
+        # garbage-collectable and peak RSS during calibrate() is cut
+        # substantially at v7 scale (>1e6 rows).
+        self.estimate_matrix_tensor: Optional[torch.Tensor] = None
 
         # Seed torch on every path, and CUDA as well when we actually
         # resolved to a CUDA device, so stochastic CUDA kernels are
@@ -121,17 +130,26 @@ class Calibration:
                 self.original_estimate_matrix.columns.to_numpy()
             )
 
+        # Build a single float32 torch copy of the full estimate matrix
+        # and release the caller's pandas DataFrame. The tensor is the
+        # authoritative matrix from here on; downstream code (including
+        # exclude_targets and hyperparameter tuning) reads it instead of
+        # re-materializing from .values.
+        if self.original_estimate_matrix is not None:
+            self.estimate_matrix_tensor = torch.tensor(
+                self.original_estimate_matrix.values,
+                dtype=torch.float32,
+                device=self.device,
+            )
+            self.original_estimate_matrix = None
+
         if self.excluded_targets is not None:
             self.exclude_targets()
         else:
             self.targets = self.original_targets
             self.target_names = self.original_target_names
-            if self.original_estimate_matrix is not None:
-                self.estimate_matrix = torch.tensor(
-                    self.original_estimate_matrix.values,
-                    dtype=torch.float32,
-                    device=self.device,
-                )
+            if self.estimate_matrix_tensor is not None:
+                self.estimate_matrix = self.estimate_matrix_tensor
             else:
                 self.estimate_matrix = None
 
@@ -182,6 +200,8 @@ class Calibration:
             regularize_with_l0=self.regularize_with_l0,
             logger=self.logger,
             seed=self.seed,
+            batch_size=self.batch_size,
+            estimate_matrix=self.estimate_matrix,
         )
 
         self.weights = new_weights
@@ -242,28 +262,24 @@ class Calibration:
                     .cpu()
                     .numpy()
                 )
-            elif self.original_estimate_matrix is not None:
-                # Get initial estimates using the original full matrix
-                original_estimate_matrix_tensor = torch.tensor(
-                    self.original_estimate_matrix.values,
-                    dtype=torch.float32,
-                    device=self.device,
-                )
+            elif self.estimate_matrix_tensor is not None:
+                # Get initial estimates using the full matrix tensor
                 initial_estimates_all = (
-                    (initial_weights_tensor @ original_estimate_matrix_tensor)
+                    (initial_weights_tensor @ self.estimate_matrix_tensor)
                     .detach()
                     .cpu()
                     .numpy()
                 )
 
-                # Filter estimate matrix for calibration
-                filtered_estimate_matrix = self.original_estimate_matrix.iloc[
-                    :, calibration_mask
-                ]
-                self.estimate_matrix = torch.tensor(
-                    filtered_estimate_matrix.values,
-                    dtype=torch.float32,
+                # Filter estimate matrix for calibration via torch column
+                # indexing — no pandas round-trip, no extra materialized copy.
+                keep_idx = torch.as_tensor(
+                    np.flatnonzero(calibration_mask),
+                    dtype=torch.long,
                     device=self.device,
+                )
+                self.estimate_matrix = (
+                    self.estimate_matrix_tensor.index_select(1, keep_idx)
                 )
 
                 self.estimate_function = (
@@ -284,12 +300,8 @@ class Calibration:
                     )
 
         else:
-            if self.original_estimate_matrix is not None:
-                self.estimate_matrix = torch.tensor(
-                    self.original_estimate_matrix.values,
-                    dtype=torch.float32,
-                    device=self.device,
-                )
+            if self.estimate_matrix_tensor is not None:
+                self.estimate_matrix = self.estimate_matrix_tensor
                 if self.original_estimate_function is None:
                     self.estimate_function = (
                         lambda weights: weights @ self.estimate_matrix
@@ -451,14 +463,19 @@ class Calibration:
 
             return np.mean(((y - y_hat) ** 2) * normalization_factor)
 
-        X = self.original_estimate_matrix.values
+        if self.estimate_matrix_tensor is None:
+            raise ValueError(
+                "analytical_solution requires a dense estimate matrix; "
+                "Calibration was constructed without one."
+            )
+        X = self.estimate_matrix_tensor.cpu().numpy()
         y = self.targets
 
         results = []
         slices = []
         idx_dict = {
-            self.original_estimate_matrix.columns.to_list()[i]: i
-            for i in range(len(self.original_estimate_matrix.columns))
+            self.original_target_names[i]: i
+            for i in range(len(self.original_target_names))
         }
 
         self.logger.info(

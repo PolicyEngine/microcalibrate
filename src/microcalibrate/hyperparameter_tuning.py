@@ -62,14 +62,11 @@ def _evaluate_single_holdout(
             sparse_weights, dtype=torch.float32, device=calibration.device
         )
 
-        if calibration.original_estimate_matrix is not None:
-            original_matrix_tensor = torch.tensor(
-                calibration.original_estimate_matrix.values,
-                dtype=torch.float32,
-                device=calibration.device,
-            )
+        if calibration.estimate_matrix_tensor is not None:
             all_estimates = (
-                (weights_tensor @ original_matrix_tensor).cpu().numpy()
+                (weights_tensor @ calibration.estimate_matrix_tensor)
+                .cpu()
+                .numpy()
             )
         else:
             all_estimates = (
