@@ -1,3 +1,14 @@
+## [0.22.0] - 2026-04-18
+
+### Added
+
+- Added `batch_size` parameter to `Calibration` and `reweight()` for gradient accumulation over record batches. When set, the chi-squared loss is accumulated under `no_grad` in a first pass and the backward pass is split into per-batch virtual-loss calls with pre-computed per-target coefficients. Peak autograd activation memory drops from O(n_records × n_targets) to O(batch_size × n_targets). The full-batch path is unchanged when `batch_size` is `None` (default) or greater than or equal to `n_records`. Not supported in combination with `regularize_with_l0=True` (raises `ValueError`).
+
+### Changed
+
+- `Calibration` now converts the user-provided `estimate_matrix` DataFrame to a cached `float32` torch tensor on `estimate_matrix_tensor` during `__init__` and releases the pandas DataFrame reference by setting `original_estimate_matrix` to `None`. Downstream code (`hyperparameter_tuning`, `evaluation`, `assess_analytical_solution`) reads the cached tensor rather than re-materializing from `DataFrame.values`. This substantially reduces peak RSS during `calibrate()` at large record counts. External readers of `Calibration.original_estimate_matrix` will now see `None` after construction; the tensor equivalent is available on `Calibration.estimate_matrix_tensor`.
+
+
 ## [0.21.3] - 2026-04-18
 
 ### Fixed
