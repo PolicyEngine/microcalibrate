@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { CalibrationDataPoint } from '@/types/calibration';
 import { getSortedUniqueTargets, sortTargetsWithRelevance } from '@/utils/targetOrdering';
+import { colors } from '@policyengine/design-system/tokens/colors';
 
 interface LossChartProps {
   data: CalibrationDataPoint[];
@@ -187,7 +188,7 @@ export default function LossChart({ data }: LossChartProps) {
             <Line 
               type="monotone" 
               dataKey="target" 
-              stroke="#dc2626" 
+              stroke={colors.error} 
               strokeWidth={3}
               strokeDasharray="5 5"
               dot={false}
@@ -196,7 +197,7 @@ export default function LossChart({ data }: LossChartProps) {
             <Line 
               type="monotone" 
               dataKey="estimate" 
-              stroke="#2563eb" 
+              stroke={colors.blue[500]} 
               strokeWidth={2}
               dot={{ r: 2 }}
               activeDot={{ r: 4 }}
@@ -234,7 +235,7 @@ export default function LossChart({ data }: LossChartProps) {
               <Line 
                 type="monotone" 
                 dataKey="rel_error" 
-                stroke="#7c3aed" 
+                stroke={colors.primary[700]} 
                 strokeWidth={2}
                 dot={{ r: 2 }}
                 activeDot={{ r: 4 }}
