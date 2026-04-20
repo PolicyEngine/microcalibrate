@@ -5,6 +5,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { CalibrationDataPoint } from '@/types/calibration';
 import { Target } from 'lucide-react';
 import { sortTargetNames, sortTargetsWithRelevance } from '@/utils/targetOrdering';
+import { globMatch } from '@/utils/globMatch';
 
 interface TargetConvergenceComparisonProps {
   firstData: CalibrationDataPoint[];
@@ -132,7 +133,7 @@ export default function TargetConvergenceComparison({
   // Filter targets based on search query for target selection dropdown
   const searchFilteredTargets = sortTargetsWithRelevance(
     allTargets.filter(target =>
-      target.toLowerCase().includes(targetSearchQuery.toLowerCase())
+      globMatch(targetSearchQuery, target)
     ),
     targetSearchQuery
   );
@@ -142,8 +143,8 @@ export default function TargetConvergenceComparison({
 
   // Filter and paginate targets based on search
   const getFilteredTargets = () => {
-    const filtered = allTargets.filter(target => 
-      target.toLowerCase().includes(searchQuery.toLowerCase())
+    const filtered = allTargets.filter(target =>
+      globMatch(searchQuery, target)
     );
     return sortTargetsWithRelevance(filtered, searchQuery);
   };
@@ -327,7 +328,7 @@ export default function TargetConvergenceComparison({
           <div className="relative flex-1 min-w-0">
             <input
               type="text"
-              placeholder="Search targets..."
+              placeholder="Search... (* = wildcard)"
               value={targetSearchQuery}
               onChange={(e) => {
                 setTargetSearchQuery(e.target.value);
@@ -690,7 +691,7 @@ export default function TargetConvergenceComparison({
           <div className="mb-3">
             <input
               type="text"
-              placeholder="Search targets by name..."
+              placeholder="Search... (* = wildcard)"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"

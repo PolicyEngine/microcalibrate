@@ -3,6 +3,7 @@
 import { CalibrationDataPoint } from '@/types/calibration';
 import { useState, useMemo } from 'react';
 import { compareTargetNames } from '@/utils/targetOrdering';
+import { globMatch } from '@/utils/globMatch';
 
 interface DataTableProps {
   data: CalibrationDataPoint[];
@@ -25,7 +26,7 @@ export default function DataTable({ data }: DataTableProps) {
   const tableFilteredData = useMemo(() => {
     return data.filter(item => 
       item.epoch === epochFilter &&
-      (item.target_name.toLowerCase().includes(filter.toLowerCase()))
+      globMatch(filter, item.target_name)
     );
   }, [data, filter, epochFilter]);
 
@@ -136,7 +137,7 @@ export default function DataTable({ data }: DataTableProps) {
           </select>
           <input
             type="text"
-            placeholder="Search target names..."
+            placeholder="Search... (* = wildcard)"
             value={filter}
             onChange={(e) => {
               setFilter(e.target.value);

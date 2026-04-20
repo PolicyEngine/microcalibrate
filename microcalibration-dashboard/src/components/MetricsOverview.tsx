@@ -24,8 +24,11 @@ export default function MetricsOverview({ data }: MetricsOverviewProps) {
   
   // Calculate convergence epoch
   const lossByEpoch = allEpochs.map(epoch => {
-    const epochData = data.find(d => d.epoch === epoch);
-    return { epoch, loss: epochData?.loss || 0 };
+    const epochData = data.filter(d => d.epoch === epoch);
+    const meanLoss = epochData.length > 0
+      ? epochData.reduce((sum, d) => sum + d.loss, 0) / epochData.length
+      : 0;
+    return { epoch, loss: meanLoss };
   });
 
   let convergenceEpoch: number | undefined;
@@ -43,7 +46,9 @@ export default function MetricsOverview({ data }: MetricsOverviewProps) {
   // Calculate quality metrics
   const totalTargets = latestData.length;
   const avgRelAbsError = latestData.reduce((sum, item) => sum + item.rel_abs_error, 0) / totalTargets;
-  const finalLoss = latestData[0]?.loss || 0;
+  const finalLoss = latestData.length > 0
+    ? latestData.reduce((sum, item) => sum + item.loss, 0) / latestData.length
+    : 0;
   
   // Categorize targets by error quality
   const excellentCount = latestData.filter(item => item.rel_abs_error < 0.05).length;
@@ -64,8 +69,35 @@ export default function MetricsOverview({ data }: MetricsOverviewProps) {
 
   const qualityStatus = getQualityStatus();
 
+  const hasAchievableData = latestData.some(d => d.achievable !== undefined);
+  const unachievable = hasAchievableData
+    ? latestData.filter(d => d.achievable === false)
+    : [];
+
   return (
     <div className="space-y-6">
+      {/* Unachievable targets warning */}
+      {unachievable.length > 0 && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="h-5 w-5 text-red-600 mt-0.5 flex-shrink-0" />
+            <div>
+              <h3 className="font-semibold text-red-800">
+                {unachievable.length} unachievable target{unachievable.length !== 1 ? 's' : ''}
+              </h3>
+              <p className="text-sm text-red-700 mt-1">
+                These targets have no non-zero matrix entries — no combination of weights can satisfy them.
+              </p>
+              <ul className="mt-2 text-sm text-red-700 space-y-0.5 max-h-40 overflow-y-auto font-mono">
+                {unachievable.map(d => (
+                  <li key={d.target_name}>{d.target_name}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Main quality summary */}
       <div className="bg-white border border-gray-300 p-6 rounded-lg shadow-sm">
         <h2 className="text-2xl font-bold mb-2 text-gray-800">Calibration quality</h2>
