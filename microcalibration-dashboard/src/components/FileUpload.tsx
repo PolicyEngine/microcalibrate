@@ -40,6 +40,24 @@ interface GitHubArtifact {
   created_at: string;
 }
 
+function githubApiPath(path: string, params?: Record<string, string | number>): string {
+  const searchParams = new URLSearchParams({ path });
+
+  if (params) {
+    Object.entries(params).forEach(([key, value]) => {
+      searchParams.set(key, String(value));
+    });
+  }
+
+  return `/api/github?${searchParams.toString()}`;
+}
+
+function githubApiPathFromUrl(url: string): string {
+  const parsed = new URL(url);
+  const searchParams = new URLSearchParams(parsed.search);
+  return githubApiPath(parsed.pathname, Object.fromEntries(searchParams));
+}
+
 export default function FileUpload({ 
   onFileLoad, 
   onViewDashboard, 
@@ -75,14 +93,14 @@ export default function FileUpload({
   const [selectedSecondArtifact, setSelectedSecondArtifact] = useState('');
 
   // Helper function to load a single artifact from deeplink parameters
-  const loadArtifactFromDeeplink = useCallback(async (artifactInfo: GitHubArtifactInfo, githubToken: string): Promise<string> => {
+  const loadArtifactFromDeeplink = useCallback(async (artifactInfo: GitHubArtifactInfo): Promise<string> => {
     // First, get the artifacts for the specific commit
     const [owner, repo] = artifactInfo.repo.split('/');
-    const runsResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}/actions/runs?head_sha=${artifactInfo.commit}`, {
+    const runsResponse = await fetch(githubApiPath(`/repos/${owner}/${repo}/actions/runs`, {
+      head_sha: artifactInfo.commit,
+    }), {
       headers: {
-        'Authorization': `Bearer ${githubToken}`,
-        'Accept': 'application/vnd.github.v3+json',
-        'User-Agent': 'PolicyEngine-Dashboard/1.0'
+        'Accept': 'application/vnd.github.v3+json'
       }
     });
 
@@ -100,11 +118,9 @@ export default function FileUpload({
     // Find the artifact by name
     let targetArtifact = null;
     for (const run of completedRuns) {
-      const artifactsResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}/actions/runs/${run.id}/artifacts`, {
+      const artifactsResponse = await fetch(githubApiPath(`/repos/${owner}/${repo}/actions/runs/${run.id}/artifacts`), {
         headers: {
-          'Authorization': `Bearer ${githubToken}`,
-          'Accept': 'application/vnd.github.v3+json',
-          'User-Agent': 'PolicyEngine-Dashboard/1.0'
+          'Accept': 'application/vnd.github.v3+json'
         }
       });
 
@@ -120,11 +136,9 @@ export default function FileUpload({
     }
 
     // Download and extract the artifact
-    const downloadResponse = await fetch(targetArtifact.archive_download_url, {
+    const downloadResponse = await fetch(githubApiPathFromUrl(targetArtifact.archive_download_url), {
       headers: {
-        'Authorization': `Bearer ${githubToken}`,
-        'Accept': 'application/vnd.github.v3+json',
-        'User-Agent': 'PolicyEngine-Dashboard/1.0'
+        'Accept': 'application/vnd.github.v3+json'
       }
     });
 
@@ -154,12 +168,6 @@ export default function FileUpload({
 
   // Load GitHub artifacts directly from deeplink parameters
   const loadDeeplinkArtifacts = useCallback(async (primary: GitHubArtifactInfo, secondary?: GitHubArtifactInfo) => {
-    const githubToken = process.env.NEXT_PUBLIC_GITHUB_TOKEN;
-    if (!githubToken) {
-      setError('GitHub token not configured. Please set NEXT_PUBLIC_GITHUB_TOKEN environment variable.');
-      return;
-    }
-
     setIsLoading(true);
     setError('');
 
@@ -167,11 +175,11 @@ export default function FileUpload({
       setError('🔄 Loading data from GitHub artifacts...');
 
       // Load primary artifact
-      const primaryData = await loadArtifactFromDeeplink(primary, githubToken);
+      const primaryData = await loadArtifactFromDeeplink(primary);
       
       if (secondary && onCompareLoad) {
         // Load secondary artifact for comparison
-        const secondaryData = await loadArtifactFromDeeplink(secondary, githubToken);
+        const secondaryData = await loadArtifactFromDeeplink(secondary);
         
         // Generate display names with commit info
         const primaryDisplayName = `${primary.repo}@${primary.branch} (${primary.commit.substring(0, 7)}) - ${primary.artifact}`;
@@ -558,12 +566,6 @@ export default function FileUpload({
       return;
     }
 
-    const githubToken = process.env.NEXT_PUBLIC_GITHUB_TOKEN;
-    if (!githubToken) {
-      setError('GitHub token not configured. Please set NEXT_PUBLIC_GITHUB_TOKEN environment variable.');
-      return;
-    }
-
     setIsLoadingGithubData(true);
     setError('');
 
@@ -574,11 +576,12 @@ export default function FileUpload({
       const perPage = 100; // Maximum allowed by GitHub API
       
       while (true) {
-        const response = await fetch(`https://api.github.com/repos/${githubRepo}/branches?per_page=${perPage}&page=${page}`, {
+        const response = await fetch(githubApiPath(`/repos/${githubRepo}/branches`, {
+          per_page: perPage,
+          page,
+        }), {
           headers: {
-            'Authorization': `Bearer ${githubToken}`,
-            'Accept': 'application/vnd.github.v3+json',
-            'User-Agent': 'PolicyEngine-Dashboard/1.0'
+            'Accept': 'application/vnd.github.v3+json'
           }
         });
         
@@ -632,19 +635,14 @@ export default function FileUpload({
   async function fetchGithubCommits(branch: string) {
     if (!githubRepo.trim() || !branch) return;
 
-    const githubToken = process.env.NEXT_PUBLIC_GITHUB_TOKEN;
-    if (!githubToken) {
-      setError('GitHub token not configured. Please set NEXT_PUBLIC_GITHUB_TOKEN environment variable.');
-      return;
-    }
-
     setIsLoadingGithubData(true);
     try {
-      const response = await fetch(`https://api.github.com/repos/${githubRepo}/commits?sha=${branch}&per_page=20`, {
+      const response = await fetch(githubApiPath(`/repos/${githubRepo}/commits`, {
+        sha: branch,
+        per_page: 20,
+      }), {
         headers: {
-          'Authorization': `Bearer ${githubToken}`,
-          'Accept': 'application/vnd.github.v3+json',
-          'User-Agent': 'PolicyEngine-Dashboard/1.0'
+          'Accept': 'application/vnd.github.v3+json'
         }
       });
       if (!response.ok) {
@@ -674,12 +672,6 @@ export default function FileUpload({
   async function fetchGithubArtifacts(commitSha: string) {
     if (!githubRepo.trim() || !commitSha) return;
 
-    const githubToken = process.env.NEXT_PUBLIC_GITHUB_TOKEN;
-    if (!githubToken) {
-      setError('GitHub token not configured. Please set NEXT_PUBLIC_GITHUB_TOKEN environment variable.');
-      return;
-    }
-
     setIsLoadingGithubData(true);
     setAvailableArtifacts([]);
     setSelectedArtifact('');
@@ -689,12 +681,12 @@ export default function FileUpload({
       
       // Get workflow runs for the commit
       const runsResponse = await fetch(
-        `https://api.github.com/repos/${owner}/${repo}/actions/runs?head_sha=${commitSha}`,
+        githubApiPath(`/repos/${owner}/${repo}/actions/runs`, {
+          head_sha: commitSha,
+        }),
         {
           headers: {
-            'Authorization': `Bearer ${githubToken}`,
-            'Accept': 'application/vnd.github.v3+json',
-            'User-Agent': 'PolicyEngine-Dashboard/1.0'
+            'Accept': 'application/vnd.github.v3+json'
           }
         }
       );
@@ -725,12 +717,10 @@ export default function FileUpload({
 
         try {
           const artifactsResponse = await fetch(
-            `https://api.github.com/repos/${owner}/${repo}/actions/runs/${run.id}/artifacts`,
+            githubApiPath(`/repos/${owner}/${repo}/actions/runs/${run.id}/artifacts`),
             {
               headers: {
-                'Authorization': `Bearer ${githubToken}`,
-                'Accept': 'application/vnd.github.v3+json',
-                'User-Agent': 'PolicyEngine-Dashboard/1.0'
+                'Accept': 'application/vnd.github.v3+json'
               }
             }
           );
@@ -791,23 +781,15 @@ export default function FileUpload({
       return;
     }
 
-    const githubToken = process.env.NEXT_PUBLIC_GITHUB_TOKEN;
-    if (!githubToken) {
-      setError('GitHub token not configured. Please set NEXT_PUBLIC_GITHUB_TOKEN environment variable.');
-      return;
-    }
-
     setIsLoading(true);
     setError('');
 
     try {
       setError('🔄 Downloading and extracting CSV from artifact...');
       
-      const downloadResponse = await fetch(artifact.archive_download_url, {
+      const downloadResponse = await fetch(githubApiPathFromUrl(artifact.archive_download_url), {
         headers: {
-          'Authorization': `Bearer ${githubToken}`,
-          'Accept': 'application/vnd.github.v3+json',
-          'User-Agent': 'PolicyEngine-Dashboard/1.0'
+          'Accept': 'application/vnd.github.v3+json'
         }
       });
 
@@ -899,19 +881,14 @@ export default function FileUpload({
   async function fetchSecondBranchCommits(branch: string) {
     if (!githubRepo.trim() || !branch) return;
 
-    const githubToken = process.env.NEXT_PUBLIC_GITHUB_TOKEN;
-    if (!githubToken) {
-      setError('GitHub token not configured. Please set NEXT_PUBLIC_GITHUB_TOKEN environment variable.');
-      return;
-    }
-
     setIsLoadingGithubData(true);
     try {
-      const response = await fetch(`https://api.github.com/repos/${githubRepo}/commits?sha=${branch}&per_page=20`, {
+      const response = await fetch(githubApiPath(`/repos/${githubRepo}/commits`, {
+        sha: branch,
+        per_page: 20,
+      }), {
         headers: {
-          'Authorization': `Bearer ${githubToken}`,
-          'Accept': 'application/vnd.github.v3+json',
-          'User-Agent': 'PolicyEngine-Dashboard/1.0'
+          'Accept': 'application/vnd.github.v3+json'
         }
       });
       if (!response.ok) {
@@ -941,12 +918,6 @@ export default function FileUpload({
   async function fetchSecondArtifacts(commitSha: string) {
     if (!githubRepo.trim() || !commitSha) return;
 
-    const githubToken = process.env.NEXT_PUBLIC_GITHUB_TOKEN;
-    if (!githubToken) {
-      setError('GitHub token not configured. Please set NEXT_PUBLIC_GITHUB_TOKEN environment variable.');
-      return;
-    }
-
     setIsLoadingGithubData(true);
     setSecondArtifacts([]);
     setSelectedSecondArtifact('');
@@ -956,12 +927,12 @@ export default function FileUpload({
       
       // Get workflow runs for the commit
       const runsResponse = await fetch(
-        `https://api.github.com/repos/${owner}/${repo}/actions/runs?head_sha=${commitSha}`,
+        githubApiPath(`/repos/${owner}/${repo}/actions/runs`, {
+          head_sha: commitSha,
+        }),
         {
           headers: {
-            'Authorization': `Bearer ${githubToken}`,
-            'Accept': 'application/vnd.github.v3+json',
-            'User-Agent': 'PolicyEngine-Dashboard/1.0'
+            'Accept': 'application/vnd.github.v3+json'
           }
         }
       );
@@ -992,12 +963,10 @@ export default function FileUpload({
 
         try {
           const artifactsResponse = await fetch(
-            `https://api.github.com/repos/${owner}/${repo}/actions/runs/${run.id}/artifacts`,
+            githubApiPath(`/repos/${owner}/${repo}/actions/runs/${run.id}/artifacts`),
             {
               headers: {
-                'Authorization': `Bearer ${githubToken}`,
-                'Accept': 'application/vnd.github.v3+json',
-                'User-Agent': 'PolicyEngine-Dashboard/1.0'
+                'Accept': 'application/vnd.github.v3+json'
               }
             }
           );
@@ -1060,12 +1029,6 @@ export default function FileUpload({
       return;
     }
 
-    const githubToken = process.env.NEXT_PUBLIC_GITHUB_TOKEN;
-    if (!githubToken) {
-      setError('GitHub token not configured. Please set NEXT_PUBLIC_GITHUB_TOKEN environment variable.');
-      return;
-    }
-
     setIsLoading(true);
     setError('');
 
@@ -1074,18 +1037,14 @@ export default function FileUpload({
       
       // Download both artifacts
       const [firstDownload, secondDownload] = await Promise.all([
-        fetch(firstArtifact.archive_download_url, {
+        fetch(githubApiPathFromUrl(firstArtifact.archive_download_url), {
           headers: {
-            'Authorization': `Bearer ${githubToken}`,
-            'Accept': 'application/vnd.github.v3+json',
-            'User-Agent': 'PolicyEngine-Dashboard/1.0'
+            'Accept': 'application/vnd.github.v3+json'
           }
         }),
-        fetch(secondArtifact.archive_download_url, {
+        fetch(githubApiPathFromUrl(secondArtifact.archive_download_url), {
           headers: {
-            'Authorization': `Bearer ${githubToken}`,
-            'Accept': 'application/vnd.github.v3+json',
-            'User-Agent': 'PolicyEngine-Dashboard/1.0'
+            'Accept': 'application/vnd.github.v3+json'
           }
         })
       ]);
