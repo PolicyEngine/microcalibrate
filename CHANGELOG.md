@@ -1,3 +1,10 @@
+## [0.22.1] - 2026-04-28
+
+### Changed
+
+- Updated GitHub Actions workflows for Node 24-compatible action runtimes.
+
+
 ## [0.22.0] - 2026-04-18
 
 ### Added
