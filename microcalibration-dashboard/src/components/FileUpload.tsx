@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Upload, File as FileIcon, Link, Database, GitBranch } from 'lucide-react';
+import Papa from 'papaparse';
+import { Upload, File as FileIcon, Link, Database, GitBranch, HardDrive } from 'lucide-react';
 import JSZip from 'jszip';
 import { DeeplinkParams, GitHubArtifactInfo } from '@/utils/deeplinks';
 
@@ -52,7 +53,7 @@ export default function FileUpload({
   const [isDragOver, setIsDragOver] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [urlInput, setUrlInput] = useState('');
-  const [activeTab, setActiveTab] = useState<'drop' | 'url' | 'sample' | 'github'>('drop');
+  const [activeTab, setActiveTab] = useState<'drop' | 'url' | 'sample' | 'github' | 'huggingface'>('drop');
   const [loadedFile, setLoadedFile] = useState<string>('');
   const [error, setError] = useState<string>('');
 
@@ -73,6 +74,31 @@ export default function FileUpload({
   const [selectedSecondCommit, setSelectedSecondCommit] = useState('');
   const [secondArtifacts, setSecondArtifacts] = useState<GitHubArtifact[]>([]);
   const [selectedSecondArtifact, setSelectedSecondArtifact] = useState('');
+
+  // Hugging Face state
+  const [hfRepo, setHfRepo] = useState('policyengine/policyengine-us-data');
+  const [hfPath, setHfPath] = useState('calibration/logs/calibration_log.csv');
+  const [hfValPath, setHfValPath] = useState('calibration/logs/validation_results.csv');
+  const [hfRevision, setHfRevision] = useState('main');
+  const [hfValExists, setHfValExists] = useState<boolean | null>(null);
+  const [hfValChecking, setHfValChecking] = useState(false);
+
+  // Check if the HF validation file exists whenever the path/repo/revision changes
+  useEffect(() => {
+    if (!hfValPath.trim() || !hfRepo.trim()) {
+      setHfValExists(null);
+      return;
+    }
+    const revision = hfRevision.trim() || 'main';
+    const url = `https://huggingface.co/${hfRepo.trim()}/resolve/${revision}/${hfValPath.trim()}`;
+    let cancelled = false;
+    setHfValChecking(true);
+    fetch(url, { method: 'HEAD' })
+      .then(res => { if (!cancelled) setHfValExists(res.ok); })
+      .catch(() => { if (!cancelled) setHfValExists(false); })
+      .finally(() => { if (!cancelled) setHfValChecking(false); });
+    return () => { cancelled = true; };
+  }, [hfRepo, hfValPath, hfRevision]);
 
   // Helper function to load a single artifact from deeplink parameters
   const loadArtifactFromDeeplink = useCallback(async (artifactInfo: GitHubArtifactInfo, githubToken: string): Promise<string> => {
@@ -233,58 +259,51 @@ export default function FileUpload({
   }, [deeplinkParams, isLoadingFromDeeplink, loadDeeplinkArtifacts]);
 
   function sampleEpochs(csvContent: string, maxEpochs = 10): { content: string; wasSampled: boolean; originalEpochs: number; sampledEpochs: number } {
-    const lines = csvContent.trim().split('\n');
-    const header = lines[0];
-    const dataLines = lines.slice(1);
-    
-    if (dataLines.length === 0) return { content: csvContent, wasSampled: false, originalEpochs: 0, sampledEpochs: 0 };
-    
-    // Parse epoch column index
-    const headerCols = header.toLowerCase().split(',');
-    const epochIndex = headerCols.findIndex(col => col.trim() === 'epoch');
-    
-    if (epochIndex === -1) return { content: csvContent, wasSampled: false, originalEpochs: 0, sampledEpochs: 0 };
-    
-    // Group data by epoch
-    const epochData = new Map<number, string[]>();
-    dataLines.forEach(line => {
-      const cols = line.split(',');
-      const epoch = parseInt(cols[epochIndex]);
+    const parsed = Papa.parse<Record<string, string>>(csvContent, {
+      header: true,
+      skipEmptyLines: true,
+    });
+
+    if (parsed.data.length === 0 || !parsed.meta.fields?.includes('epoch')) {
+      return { content: csvContent, wasSampled: false, originalEpochs: 0, sampledEpochs: 0 };
+    }
+
+    const epochData = new Map<number, Record<string, string>[]>();
+    parsed.data.forEach(row => {
+      const epoch = parseInt(row.epoch);
       if (!isNaN(epoch)) {
         if (!epochData.has(epoch)) {
           epochData.set(epoch, []);
         }
-        epochData.get(epoch)!.push(line);
+        epochData.get(epoch)!.push(row);
       }
     });
-    
-    // Get sorted unique epochs
+
     const allEpochs = Array.from(epochData.keys()).sort((a, b) => a - b);
     const originalEpochCount = allEpochs.length;
-    
+
     if (allEpochs.length <= maxEpochs) {
       return { content: csvContent, wasSampled: false, originalEpochs: originalEpochCount, sampledEpochs: originalEpochCount };
     }
-    
-    // Sample evenly spaced epochs
+
     const sampledEpochs: number[] = [];
     for (let i = 0; i < maxEpochs; i++) {
       const index = Math.round((i / (maxEpochs - 1)) * (allEpochs.length - 1));
       sampledEpochs.push(allEpochs[index]);
     }
-    
-    // Collect sampled data
-    const sampledLines: string[] = [header];
+
+    const sampledRows: Record<string, string>[] = [];
     sampledEpochs.forEach(epoch => {
-      const epochLines = epochData.get(epoch) || [];
-      sampledLines.push(...epochLines);
+      const rows = epochData.get(epoch) || [];
+      sampledRows.push(...rows);
     });
-    
-    return { 
-      content: sampledLines.join('\n'), 
-      wasSampled: true, 
-      originalEpochs: originalEpochCount, 
-      sampledEpochs: maxEpochs 
+
+    const output = Papa.unparse(sampledRows, { columns: parsed.meta.fields });
+    return {
+      content: output,
+      wasSampled: true,
+      originalEpochs: originalEpochCount,
+      sampledEpochs: maxEpochs,
     };
   }
 
@@ -304,24 +323,31 @@ export default function FileUpload({
         throw new Error('The file must contain at least a header row and one data row.');
       }
 
-      // Check for required columns
+      // Check for required columns (calibration or validation format)
       const headerLine = lines[0].toLowerCase();
-      const requiredColumns = ['epoch', 'loss', 'target_name', 'target', 'estimate', 'error'];
-      const missingColumns = requiredColumns.filter(col => !headerLine.includes(col));
+      const calibrationColumns = ['epoch', 'loss', 'target_name', 'target', 'estimate', 'error'];
+      const validationColumns = ['sim_value', 'target_value', 'variable'];
+      const isValidation = validationColumns.every(col => headerLine.includes(col));
+      const isCalibration = calibrationColumns.every(col => headerLine.includes(col));
 
-      if (missingColumns.length > 0) {
+      if (!isCalibration && !isValidation) {
         throw new Error(
-          `Missing required columns: ${missingColumns.join(', ')}. Please ensure your CSV has the correct format.`
+          `Unrecognized CSV format. Expected calibration columns (epoch, loss, target_name, ...) or validation columns (sim_value, target_value, variable, ...).`
         );
       }
 
-      // Sample epochs to limit data size
-      const samplingResult = sampleEpochs(content);
-      
-      onFileLoad(samplingResult.content, file.name);
-      if (samplingResult.wasSampled) {
-        setLoadedFile(`${file.name} (sampled ${samplingResult.sampledEpochs}/${samplingResult.originalEpochs} epochs)`);
+      if (isCalibration && !isValidation) {
+        // Sample epochs to limit data size for calibration CSVs
+        const samplingResult = sampleEpochs(content);
+        onFileLoad(samplingResult.content, file.name);
+        if (samplingResult.wasSampled) {
+          setLoadedFile(`${file.name} (sampled ${samplingResult.sampledEpochs}/${samplingResult.originalEpochs} epochs)`);
+        } else {
+          setLoadedFile(file.name);
+        }
       } else {
+        // Validation CSVs don't need epoch sampling
+        onFileLoad(content, file.name);
         setLoadedFile(file.name);
       }
     } catch (err) {
@@ -481,26 +507,29 @@ export default function FileUpload({
       }
 
       const headerLine = lines[0].toLowerCase();
-      const requiredColumns = ['epoch', 'loss', 'target_name', 'target', 'estimate', 'error'];
-      const missingColumns = requiredColumns.filter(col => !headerLine.includes(col));
+      const calibrationColumns = ['epoch', 'loss', 'target_name', 'target', 'estimate', 'error'];
+      const validationColumns = ['sim_value', 'target_value', 'variable'];
+      const isUrlValidation = validationColumns.every(col => headerLine.includes(col));
+      const isUrlCalibration = calibrationColumns.every(col => headerLine.includes(col));
 
-      if (missingColumns.length > 0) {
+      if (!isUrlCalibration && !isUrlValidation) {
         throw new Error(
-          `Downloaded file is missing required columns: ${missingColumns.join(
-            ', '
-          )}. Please ensure the URL points to a valid calibration CSV file.`
+          `Unrecognized CSV format. Expected calibration or validation columns.`
         );
       }
 
-      // Sample epochs to limit data size
-      const samplingResult = sampleEpochs(content);
-      
-      const filename = url.pathname.split('/').pop() || 'remote-file.csv';
-      onFileLoad(samplingResult.content, filename);
-      if (samplingResult.wasSampled) {
-        setLoadedFile(`${filename} (sampled ${samplingResult.sampledEpochs}/${samplingResult.originalEpochs} epochs)`);
+      const urlFilename = url.pathname.split('/').pop() || 'remote-file.csv';
+      if (isUrlCalibration && !isUrlValidation) {
+        const samplingResult = sampleEpochs(content);
+        onFileLoad(samplingResult.content, urlFilename);
+        if (samplingResult.wasSampled) {
+          setLoadedFile(`${urlFilename} (sampled ${samplingResult.sampledEpochs}/${samplingResult.originalEpochs} epochs)`);
+        } else {
+          setLoadedFile(urlFilename);
+        }
       } else {
-        setLoadedFile(filename);
+        onFileLoad(content, urlFilename);
+        setLoadedFile(urlFilename);
       }
     } catch (err) {
       if (err instanceof Error) {
@@ -541,6 +570,184 @@ export default function FileUpload({
       }
     } catch (err) {
       setError(`Failed to load sample data: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  async function handleSampleBothLoad() {
+    setIsLoading(true);
+    setError('');
+
+    try {
+      const [calResponse, valResponse] = await Promise.all([
+        fetch('/calibration_log.csv'),
+        fetch('/validation_results.csv'),
+      ]);
+      if (!calResponse.ok) throw new Error(`Failed to load calibration sample: HTTP ${calResponse.status}`);
+      if (!valResponse.ok) throw new Error(`Failed to load validation sample: HTTP ${valResponse.status}`);
+
+      const [calContent, valContent] = await Promise.all([
+        calResponse.text(),
+        valResponse.text(),
+      ]);
+
+      const samplingResult = sampleEpochs(calContent);
+      const calName = samplingResult.wasSampled
+        ? `calibration_log.csv (sampled ${samplingResult.sampledEpochs}/${samplingResult.originalEpochs} epochs)`
+        : 'calibration_log.csv';
+
+      onFileLoad(samplingResult.content, calName);
+      onFileLoad(valContent, 'validation_results.csv');
+
+      setLoadedFile(`${calName} + validation_results.csv`);
+    } catch (err) {
+      setError(`Failed to load sample data: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  async function handleHuggingFaceLoad() {
+    if (!hfRepo.trim() || !hfPath.trim()) {
+      setError('Please fill in the repository and file path fields.');
+      return;
+    }
+
+    const revision = hfRevision.trim() || 'main';
+    const url = `https://huggingface.co/${hfRepo.trim()}/resolve/${revision}/${hfPath.trim()}`;
+
+    setIsLoading(true);
+    setError('');
+
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30_000);
+
+      const response = await fetch(url, { signal: controller.signal });
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        const map: Record<number, string> = {
+          404: 'File not found on Hugging Face. Check the repo, path, and revision.',
+          401: 'Authentication required. This repo may be private.',
+          403: 'Access denied. This repo may be private or gated.',
+        };
+        throw new Error(map[response.status] || `HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const content = await response.text();
+
+      if (!content.trim()) {
+        throw new Error('The downloaded file is empty.');
+      }
+
+      const lines = content.trim().split('\n');
+      if (lines.length < 2) {
+        throw new Error('File must contain at least a header and one data row.');
+      }
+
+      const headerLine = lines[0].toLowerCase();
+      const calCols = ['epoch', 'loss', 'target_name', 'target', 'estimate', 'error'];
+      const valCols = ['sim_value', 'target_value', 'variable'];
+      const isVal = valCols.every(col => headerLine.includes(col));
+      const isCal = calCols.every(col => headerLine.includes(col));
+
+      if (!isCal && !isVal) {
+        throw new Error('Unrecognized CSV format. Expected calibration or validation columns.');
+      }
+
+      const filename = hfPath.trim().split('/').pop() || 'huggingface-file.csv';
+      const revisionLabel = revision !== 'main' ? ` @${revision}` : '';
+      const displayBase = `${filename}${revisionLabel} (HF)`;
+
+      if (isCal && !isVal) {
+        const samplingResult = sampleEpochs(content);
+        const displayName = samplingResult.wasSampled
+          ? `${displayBase} - sampled ${samplingResult.sampledEpochs}/${samplingResult.originalEpochs} epochs`
+          : displayBase;
+        onFileLoad(samplingResult.content, displayName);
+        setLoadedFile(displayName);
+      } else {
+        onFileLoad(content, displayBase);
+        setLoadedFile(displayBase);
+      }
+    } catch (err) {
+      if (err instanceof Error) {
+        if (err.name === 'AbortError') {
+          setError('Request timed out after 30s.');
+        } else if (err.message.includes('Failed to fetch')) {
+          setError('Network error: unable to reach Hugging Face. Check your connection.');
+        } else {
+          setError(`Failed to load from Hugging Face: ${err.message}`);
+        }
+      } else {
+        setError('Unknown error loading from Hugging Face.');
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  async function handleHuggingFaceBothLoad() {
+    if (!hfRepo.trim() || !hfPath.trim() || !hfValPath.trim()) {
+      setError('Please fill in the repository, calibration path, and validation path fields.');
+      return;
+    }
+
+    const revision = hfRevision.trim() || 'main';
+    setIsLoading(true);
+    setError('');
+
+    const fetchOne = async (path: string) => {
+      const url = `https://huggingface.co/${hfRepo.trim()}/resolve/${revision}/${path.trim()}`;
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30_000);
+      const response = await fetch(url, { signal: controller.signal });
+      clearTimeout(timeoutId);
+      if (!response.ok) {
+        const map: Record<number, string> = {
+          404: `File not found: ${path}`,
+          401: 'Authentication required.',
+          403: 'Access denied.',
+        };
+        throw new Error(map[response.status] || `HTTP ${response.status} for ${path}`);
+      }
+      return response.text();
+    };
+
+    try {
+      const revisionLabel = revision !== 'main' ? ` @${revision}` : '';
+
+      const [calContent, valContent] = await Promise.all([
+        fetchOne(hfPath),
+        fetchOne(hfValPath),
+      ]);
+
+      const calFilename = `${hfPath.trim().split('/').pop()}${revisionLabel} (HF)`;
+      const calSampled = sampleEpochs(calContent);
+      const calDisplayName = calSampled.wasSampled
+        ? `${calFilename} - sampled ${calSampled.sampledEpochs}/${calSampled.originalEpochs} epochs`
+        : calFilename;
+      const valFilename = `${hfValPath.trim().split('/').pop()}${revisionLabel} (HF)`;
+
+      // Call both onFileLoad synchronously so React batches the state updates
+      // before re-rendering (avoids the calibration load unmounting FileUpload
+      // before the validation load runs)
+      onFileLoad(calSampled.content, calDisplayName);
+      onFileLoad(valContent, valFilename);
+
+      setLoadedFile(`${calDisplayName} + ${valFilename}`);
+    } catch (err) {
+      if (err instanceof Error) {
+        if (err.name === 'AbortError') {
+          setError('Request timed out after 30s.');
+        } else {
+          setError(`Failed to load from Hugging Face: ${err.message}`);
+        }
+      } else {
+        setError('Unknown error loading from Hugging Face.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -844,28 +1051,33 @@ export default function FileUpload({
         throw new Error('The CSV must contain at least a header row and one data row');
       }
 
-      // Check for required columns
+      // Check for required columns (calibration or validation)
       const headerLine = lines[0].toLowerCase();
-      const requiredColumns = ['epoch', 'loss', 'target_name', 'target', 'estimate', 'error'];
-      const missingColumns = requiredColumns.filter(col => !headerLine.includes(col));
+      const ghCalCols = ['epoch', 'loss', 'target_name', 'target', 'estimate', 'error'];
+      const ghValCols = ['sim_value', 'target_value', 'variable'];
+      const isGhValidation = ghValCols.every(col => headerLine.includes(col));
+      const isGhCalibration = ghCalCols.every(col => headerLine.includes(col));
 
-      if (missingColumns.length > 0) {
-        throw new Error(`Missing required columns: ${missingColumns.join(', ')}`);
+      if (!isGhCalibration && !isGhValidation) {
+        throw new Error(`Unrecognized CSV format. Expected calibration or validation columns.`);
       }
 
-      // Sample epochs to limit data size
-      const samplingResult = sampleEpochs(csvContent);
-
-      // Success! Load the CSV into the dashboard with commit info
       const commitShort = selectedCommit.slice(0, 8);
       const branchInfo = selectedBranch ? ` (${selectedBranch})` : '';
       const baseDisplayName = `${csvFilename} @ ${commitShort}${branchInfo}`;
-      const displayName = samplingResult.wasSampled 
-        ? `${baseDisplayName} - sampled ${samplingResult.sampledEpochs}/${samplingResult.originalEpochs} epochs`
-        : baseDisplayName;
-      
-      onFileLoad(samplingResult.content, displayName);
-      setLoadedFile(displayName);
+
+      let ghDisplayName: string;
+      if (isGhCalibration && !isGhValidation) {
+        const samplingResult = sampleEpochs(csvContent);
+        ghDisplayName = samplingResult.wasSampled
+          ? `${baseDisplayName} - sampled ${samplingResult.sampledEpochs}/${samplingResult.originalEpochs} epochs`
+          : baseDisplayName;
+        onFileLoad(samplingResult.content, ghDisplayName);
+      } else {
+        ghDisplayName = baseDisplayName;
+        onFileLoad(csvContent, ghDisplayName);
+      }
+      setLoadedFile(ghDisplayName);
       setError('');
       
       // Notify parent component about GitHub artifact info for sharing
@@ -1173,7 +1385,7 @@ export default function FileUpload({
     <div className="bg-white rounded-lg shadow-lg p-6">
       <div className="mb-6">
         <h2 className="text-2xl font-semibold text-gray-900 mb-2">Load calibration data</h2>
-        <p className="text-gray-600">Choose how you would like to load your CSV file</p>
+        <p className="text-gray-600">Load a calibration_log.csv or validation_results.csv file. Auto-detected by columns.</p>
       </div>
 
       {error && (
@@ -1233,6 +1445,17 @@ export default function FileUpload({
         >
           <Database className="w-4 h-4 inline mr-2" />
           Sample data
+        </button>
+        <button
+          onClick={() => setActiveTab('huggingface')}
+          className={`px-4 py-2 text-sm font-medium border-b-2 ${
+            activeTab === 'huggingface'
+              ? 'border-blue-500 text-blue-600'
+              : 'border-transparent text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          <HardDrive className="w-4 h-4 inline mr-2" />
+          Hugging Face
         </button>
       </div>
 
@@ -1301,21 +1524,34 @@ export default function FileUpload({
             <div className="flex items-start space-x-3">
               <Database className="w-6 h-6 text-blue-600 mt-1" />
               <div className="flex-1">
-                <h3 className="text-lg font-medium text-blue-900 mb-2">Load sample calibration data</h3>
+                <h3 className="text-lg font-medium text-blue-900 mb-2">Load sample data</h3>
                 <p className="text-blue-700 mb-4">
-                  Try the dashboard with sample calibration data showing income targets by age group over 500+ epochs.
+                  Try the dashboard with sample calibration and validation data from a real calibration run
+                  across 436 congressional districts and 19 national targets.
                 </p>
                 <ul className="text-sm text-blue-600 mb-4 space-y-1">
-                  <li>• Shows calibration for income_aged_20_30 and income_aged_40_50 targets</li>
-                  <li>• Demonstrates error reduction over training epochs</li>
+                  <li>• Calibration log: per-target X*w estimates over 500 epochs</li>
+                  <li>• Validation results: sim.calculate() vs targets across districts and states</li>
                 </ul>
-                <button
-                  onClick={handleSampleLoad}
-                  disabled={isLoading}
-                  className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isLoading ? 'Loading Sample...' : 'Load sample data'}
-                </button>
+                <div className="flex gap-3">
+                  <button
+                    onClick={handleSampleLoad}
+                    disabled={isLoading}
+                    className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isLoading ? 'Loading...' : 'Load calibration only'}
+                  </button>
+                  <button
+                    onClick={handleSampleBothLoad}
+                    disabled={isLoading}
+                    className="bg-blue-800 hover:bg-blue-900 text-white font-medium py-2 px-4 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isLoading ? 'Loading...' : 'Load both'}
+                  </button>
+                </div>
+                <p className="text-xs text-gray-500 mt-3">
+                  &quot;Load both&quot; loads calibration + validation for the Explorer tab.
+                </p>
               </div>
             </div>
           </div>
@@ -1477,7 +1713,7 @@ export default function FileUpload({
                 {/* Second Selection for Comparison */}
                 {comparisonMode && githubBranches.length > 0 && (
                   <div className="border-t border-gray-200 pt-4 mt-6">
-                    <h4 className="text-md font-semibold text-gray-800 mb-4">Second Calibration Run (for comparison)</h4>
+                    <h4 className="text-md font-semibold text-gray-800 mb-4">Second calibration run (for comparison)</h4>
                     
                     {/* Second Branch Selection */}
                     <div className="mb-4">
@@ -1589,6 +1825,110 @@ export default function FileUpload({
                     <li>• ✅ Full CSV extraction from ZIP artifacts</li>
                   </ul>
                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'huggingface' && (
+        <div className="space-y-4">
+          <div className="bg-purple-50 border border-purple-200 rounded-lg p-6">
+            <div className="flex items-start space-x-3">
+              <HardDrive className="w-6 h-6 text-purple-600 mt-1" />
+              <div className="flex-1">
+                <h3 className="text-lg font-medium text-purple-900 mb-2">Load from Hugging Face</h3>
+                <p className="text-purple-700 mb-4">
+                  Load calibration logs directly from a Hugging Face model repository.
+                </p>
+
+                <div className="mb-3">
+                  <label htmlFor="hf-repo" className="block text-sm font-medium text-gray-700 mb-1">
+                    Repository
+                  </label>
+                  <input
+                    id="hf-repo"
+                    type="text"
+                    value={hfRepo}
+                    onChange={e => setHfRepo(e.target.value)}
+                    placeholder="policyengine/policyengine-us-data"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  />
+                </div>
+
+                <div className="mb-3">
+                  <label htmlFor="hf-path" className="block text-sm font-medium text-gray-700 mb-1">
+                    File path
+                  </label>
+                  <input
+                    id="hf-path"
+                    type="text"
+                    value={hfPath}
+                    onChange={e => setHfPath(e.target.value)}
+                    placeholder="calibration/logs/calibration_log.csv"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  />
+                </div>
+
+                <div className="mb-3">
+                  <label htmlFor="hf-val-path" className="block text-sm font-medium text-gray-700 mb-1">
+                    Validation file path <span className="text-gray-400 font-normal">(optional, for Load both)</span>
+                  </label>
+                  <input
+                    id="hf-val-path"
+                    type="text"
+                    value={hfValPath}
+                    onChange={e => setHfValPath(e.target.value)}
+                    placeholder="calibration/logs/validation_results.csv"
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 ${
+                      hfValExists === false ? 'border-amber-400 bg-amber-50' : 'border-gray-300'
+                    }`}
+                  />
+                  {hfValChecking && (
+                    <p className="text-xs text-gray-400 mt-1">Checking file...</p>
+                  )}
+                  {!hfValChecking && hfValExists === false && hfValPath.trim() && (
+                    <p className="text-xs text-amber-600 mt-1">
+                      File not found at this path. &quot;Load both&quot; is unavailable — you can still load the calibration file alone.
+                    </p>
+                  )}
+                </div>
+
+                <div className="mb-4">
+                  <label htmlFor="hf-revision" className="block text-sm font-medium text-gray-700 mb-1">
+                    Revision <span className="text-gray-400 font-normal">(branch, tag, or commit)</span>
+                  </label>
+                  <input
+                    id="hf-revision"
+                    type="text"
+                    value={hfRevision}
+                    onChange={e => setHfRevision(e.target.value)}
+                    placeholder="main"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  />
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={handleHuggingFaceLoad}
+                    disabled={isLoading || !hfRepo.trim() || !hfPath.trim()}
+                    className="bg-purple-600 hover:bg-purple-700 text-white font-medium py-2 px-4 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isLoading ? 'Loading...' : 'Load'}
+                  </button>
+                  <button
+                    onClick={handleHuggingFaceBothLoad}
+                    disabled={isLoading || !hfRepo.trim() || !hfPath.trim() || !hfValPath.trim() || hfValExists === false}
+                    className="bg-purple-800 hover:bg-purple-900 text-white font-medium py-2 px-4 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isLoading ? 'Loading...' : 'Load both'}
+                  </button>
+                </div>
+
+                <p className="text-xs text-gray-500 mt-3">
+                  Works with public repositories. &quot;Load&quot; fetches the calibration file only.
+                  &quot;Load both&quot; fetches calibration + validation for the Explorer tab.
+                </p>
               </div>
             </div>
           </div>

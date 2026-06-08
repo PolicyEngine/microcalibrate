@@ -5,23 +5,39 @@ export interface GitHubArtifactInfo {
   artifact: string;
 }
 
+export interface HuggingFaceDeeplinkInfo {
+  repo: string;
+  calPath: string;
+  valPath?: string;
+  revision: string;
+}
+
 export interface DeeplinkParams {
-  mode?: 'single' | 'comparison';
+  mode?: 'single' | 'comparison' | 'huggingface';
   primary?: GitHubArtifactInfo | null;
   secondary?: GitHubArtifactInfo | null;
+  huggingface?: HuggingFaceDeeplinkInfo | null;
 }
 
 export function encodeDeeplink(params: DeeplinkParams): string {
   const urlParams = new URLSearchParams();
-  
-  if (params.mode === 'comparison' && params.primary && params.secondary) {
+
+  if (params.mode === 'huggingface' && params.huggingface) {
+    urlParams.set('mode', 'huggingface');
+    urlParams.set('hf_repo', params.huggingface.repo);
+    urlParams.set('hf_cal', params.huggingface.calPath);
+    if (params.huggingface.valPath) {
+      urlParams.set('hf_val', params.huggingface.valPath);
+    }
+    urlParams.set('revision', params.huggingface.revision);
+  } else if (params.mode === 'comparison' && params.primary && params.secondary) {
     urlParams.set('mode', 'comparison');
-    
+
     urlParams.set('repo1', params.primary.repo);
     urlParams.set('branch1', params.primary.branch);
     urlParams.set('commit1', params.primary.commit);
     urlParams.set('artifact1', params.primary.artifact);
-    
+
     urlParams.set('repo2', params.secondary.repo);
     urlParams.set('branch2', params.secondary.branch);
     urlParams.set('commit2', params.secondary.commit);
@@ -32,24 +48,36 @@ export function encodeDeeplink(params: DeeplinkParams): string {
     urlParams.set('commit', params.primary.commit);
     urlParams.set('artifact', params.primary.artifact);
   }
-  
+
   return urlParams.toString();
 }
 
 export function decodeDeeplink(searchParams: URLSearchParams): DeeplinkParams | null {
   const mode = searchParams.get('mode');
-  
-  if (mode === 'comparison') {
+
+  if (mode === 'huggingface') {
+    const hfRepo = searchParams.get('hf_repo');
+    const hfCal = searchParams.get('hf_cal');
+    const hfVal = searchParams.get('hf_val') || undefined;
+    const revision = searchParams.get('revision') || 'main';
+
+    if (hfRepo && hfCal) {
+      return {
+        mode: 'huggingface',
+        huggingface: { repo: hfRepo, calPath: hfCal, valPath: hfVal, revision },
+      };
+    }
+  } else if (mode === 'comparison') {
     const repo1 = searchParams.get('repo1');
     const branch1 = searchParams.get('branch1');
     const commit1 = searchParams.get('commit1');
     const artifact1 = searchParams.get('artifact1');
-    
+
     const repo2 = searchParams.get('repo2');
     const branch2 = searchParams.get('branch2');
     const commit2 = searchParams.get('commit2');
     const artifact2 = searchParams.get('artifact2');
-    
+
     if (repo1 && branch1 && commit1 && artifact1 && repo2 && branch2 && commit2 && artifact2) {
       return {
         mode: 'comparison',
@@ -62,7 +90,7 @@ export function decodeDeeplink(searchParams: URLSearchParams): DeeplinkParams | 
     const branch = searchParams.get('branch');
     const commit = searchParams.get('commit');
     const artifact = searchParams.get('artifact');
-    
+
     if (repo && branch && commit && artifact) {
       return {
         mode: 'single',
@@ -70,7 +98,7 @@ export function decodeDeeplink(searchParams: URLSearchParams): DeeplinkParams | 
       };
     }
   }
-  
+
   return null;
 }
 

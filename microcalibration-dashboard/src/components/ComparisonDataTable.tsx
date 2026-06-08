@@ -3,6 +3,7 @@
 import { CalibrationDataPoint } from '@/types/calibration';
 import { useState, useMemo } from 'react';
 import { compareTargetNames } from '@/utils/targetOrdering';
+import { globMatch } from '@/utils/globMatch';
 
 interface ComparisonDataTableProps {
   firstData: CalibrationDataPoint[];
@@ -78,8 +79,8 @@ export default function ComparisonDataTable({
     }));
 
     // Filter by search term
-    return rows.filter(row => 
-      row.targetName.toLowerCase().includes(filter.toLowerCase())
+    return rows.filter(row =>
+      globMatch(filter, row.targetName)
     );
   }, [firstData, secondData, epochFilter, filter]);
 
@@ -347,7 +348,7 @@ export default function ComparisonDataTable({
           </select>
           <input
             type="text"
-            placeholder="Search target names..."
+            placeholder="Search... (* = wildcard)"
             value={filter}
             onChange={(e) => {
               setFilter(e.target.value);
