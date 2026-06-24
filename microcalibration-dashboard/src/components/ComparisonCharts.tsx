@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { CalibrationDataPoint } from '@/types/calibration';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { TrendingUp } from 'lucide-react';
+import { colors } from '@policyengine/design-system/tokens/colors';
 
 interface ComparisonChartsProps {
   firstData: CalibrationDataPoint[];
@@ -123,7 +124,7 @@ export default function ComparisonCharts({ firstData, secondData, firstName, sec
             >
               <div
                 className="w-3 h-0.5 mr-2"
-                style={{ backgroundColor: isVisible ? entry.color : '#ccc' }}
+                style={{ backgroundColor: isVisible ? entry.color : colors.gray[300] }}
               />
               <span className="text-sm text-gray-700">{entry.value}</span>
             </div>
@@ -149,7 +150,7 @@ export default function ComparisonCharts({ firstData, secondData, firstName, sec
             >
               <div
                 className="w-3 h-0.5 mr-2"
-                style={{ backgroundColor: isVisible ? entry.color : '#ccc' }}
+                style={{ backgroundColor: isVisible ? entry.color : colors.gray[300] }}
               />
               <span className="text-sm text-gray-700">{entry.value}</span>
             </div>
@@ -208,7 +209,7 @@ export default function ComparisonCharts({ firstData, secondData, firstName, sec
                 <Line 
                   type="monotone" 
                   dataKey="firstTotalLoss" 
-                  stroke={visibleLossLines.first ? "#2563eb" : "transparent"}
+                  stroke={visibleLossLines.first ? colors.blue[500] : "transparent"}
                   strokeWidth={2}
                   dot={visibleLossLines.first ? { r: 3 } : false}
                   activeDot={visibleLossLines.first ? { r: 5 } : false}
@@ -219,7 +220,7 @@ export default function ComparisonCharts({ firstData, secondData, firstName, sec
                 <Line 
                   type="monotone" 
                   dataKey="secondTotalLoss" 
-                  stroke={visibleLossLines.second ? "#7c3aed" : "transparent"}
+                  stroke={visibleLossLines.second ? colors.primary[700] : "transparent"}
                   strokeWidth={2}
                   dot={visibleLossLines.second ? { r: 3 } : false}
                   activeDot={visibleLossLines.second ? { r: 5 } : false}
@@ -268,7 +269,7 @@ export default function ComparisonCharts({ firstData, secondData, firstName, sec
                 <Line 
                   type="monotone" 
                   dataKey="firstAvgError" 
-                  stroke={visibleErrorLines.first ? "#2563eb" : "transparent"}
+                  stroke={visibleErrorLines.first ? colors.blue[500] : "transparent"}
                   strokeWidth={2}
                   dot={visibleErrorLines.first ? { r: 3 } : false}
                   activeDot={visibleErrorLines.first ? { r: 5 } : false}
@@ -279,7 +280,7 @@ export default function ComparisonCharts({ firstData, secondData, firstName, sec
                 <Line 
                   type="monotone" 
                   dataKey="secondAvgError" 
-                  stroke={visibleErrorLines.second ? "#7c3aed" : "transparent"}
+                  stroke={visibleErrorLines.second ? colors.primary[700] : "transparent"}
                   strokeWidth={2}
                   dot={visibleErrorLines.second ? { r: 3 } : false}
                   activeDot={visibleErrorLines.second ? { r: 5 } : false}

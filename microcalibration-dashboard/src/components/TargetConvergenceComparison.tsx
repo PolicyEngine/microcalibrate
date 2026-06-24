@@ -5,6 +5,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { CalibrationDataPoint } from '@/types/calibration';
 import { Target } from 'lucide-react';
 import { sortTargetNames, sortTargetsWithRelevance } from '@/utils/targetOrdering';
+import { colors } from '@policyengine/design-system/tokens/colors';
 
 interface TargetConvergenceComparisonProps {
   firstData: CalibrationDataPoint[];
@@ -272,14 +273,14 @@ export default function TargetConvergenceComparison({
                 style={{
                   borderStyle: typedItem.dataKey === 'target' ? 'dashed' : 'solid',
                   borderColor:
-                    typedItem.dataKey === 'target' ? '#dc2626' : typedItem.color,
+                    typedItem.dataKey === 'target' ? colors.error : typedItem.color,
                 }}
               />
               <span
                 className="text-sm font-medium"
                 style={{
                   color:
-                    typedItem.dataKey === 'target' ? '#dc2626' : typedItem.color,
+                    typedItem.dataKey === 'target' ? colors.error : typedItem.color,
                   opacity:
                     isFirst
                       ? lineOpacity.firstEstimate
@@ -476,7 +477,7 @@ export default function TargetConvergenceComparison({
               {/* Target reference line */}
               <ReferenceLine 
                 y={targetValue} 
-                stroke="#dc2626" 
+                stroke={colors.error} 
                 strokeWidth={3}
                 strokeDasharray="5 5"
               />
@@ -485,10 +486,10 @@ export default function TargetConvergenceComparison({
               <Line 
                 type="monotone" 
                 dataKey="firstEstimate" 
-                stroke="#3b82f6" 
+                stroke={colors.blue[500]} 
                 strokeWidth={2}
                 strokeOpacity={lineOpacity.firstEstimate}
-                dot={{ r: 3, fill: '#3b82f6', fillOpacity: lineOpacity.firstEstimate }}
+                dot={{ r: 3, fill: colors.blue[500], fillOpacity: lineOpacity.firstEstimate }}
                 activeDot={{ r: 5, fillOpacity: lineOpacity.firstEstimate }}
                 connectNulls={false}
                 name={`${firstName}`}
@@ -498,10 +499,10 @@ export default function TargetConvergenceComparison({
               <Line 
                 type="monotone" 
                 dataKey="secondEstimate" 
-                stroke="#7c3aed" 
+                stroke={colors.primary[700]} 
                 strokeWidth={2}
                 strokeOpacity={lineOpacity.secondEstimate}
-                dot={{ r: 3, fill: '#7c3aed', fillOpacity: lineOpacity.secondEstimate }}
+                dot={{ r: 3, fill: colors.primary[700], fillOpacity: lineOpacity.secondEstimate }}
                 activeDot={{ r: 5, fillOpacity: lineOpacity.secondEstimate }}
                 connectNulls={false}
                 name={`${secondName}`}
@@ -511,7 +512,7 @@ export default function TargetConvergenceComparison({
               <Line 
                 type="monotone" 
                 dataKey="target" 
-                stroke="#dc2626" 
+                stroke={colors.error} 
                 strokeWidth={3}
                 strokeDasharray="5 5"
                 dot={false}
@@ -610,10 +611,10 @@ export default function TargetConvergenceComparison({
               <Line 
                 type="monotone" 
                 dataKey="firstError" 
-                stroke="#3b82f6" 
+                stroke={colors.blue[500]} 
                 strokeWidth={2}
                 strokeOpacity={lineOpacity.firstEstimate}
-                dot={{ r: 2, fill: '#3b82f6', fillOpacity: lineOpacity.firstEstimate }}
+                dot={{ r: 2, fill: colors.blue[500], fillOpacity: lineOpacity.firstEstimate }}
                 activeDot={{ r: 4, fillOpacity: lineOpacity.firstEstimate }}
                 connectNulls={false}
                 name={`${firstName} error`}
@@ -623,10 +624,10 @@ export default function TargetConvergenceComparison({
               <Line 
                 type="monotone" 
                 dataKey="secondError" 
-                stroke="#7c3aed" 
+                stroke={colors.primary[700]} 
                 strokeWidth={2}
                 strokeOpacity={lineOpacity.secondEstimate}
-                dot={{ r: 2, fill: '#7c3aed', fillOpacity: lineOpacity.secondEstimate }}
+                dot={{ r: 2, fill: colors.primary[700], fillOpacity: lineOpacity.secondEstimate }}
                 activeDot={{ r: 4, fillOpacity: lineOpacity.secondEstimate }}
                 connectNulls={false}
                 name={`${secondName} error`}
@@ -817,13 +818,13 @@ export default function TargetConvergenceComparison({
                 />
                 
                 {/* Target Value Bars */}
-                <Bar dataKey="targetValue" name="Target value" fill="#16a34a" />
+                <Bar dataKey="targetValue" name="Target value" fill={colors.success} />
                 
                 {/* First Dataset Estimates */}
-                <Bar dataKey="firstEstimate" name={firstName} fill="#3b82f6" />
+                <Bar dataKey="firstEstimate" name={firstName} fill={colors.blue[500]} />
                 
                 {/* Second Dataset Estimates */}
-                <Bar dataKey="secondEstimate" name={secondName} fill="#7c3aed" />
+                <Bar dataKey="secondEstimate" name={secondName} fill={colors.primary[700]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
