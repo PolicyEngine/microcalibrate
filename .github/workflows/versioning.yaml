@@ -16,13 +16,19 @@ jobs:
         if: |
           (!(github.event.head_commit.message == 'Update package version'))
         steps:
-            - name: Checkout repo
-              uses: actions/checkout@v4
+            - name: Generate GitHub App token
+              id: app-token
+              uses: actions/create-github-app-token@v3
               with:
-                token: ${{ secrets.POLICYENGINE_GITHUB }}
+                app-id: ${{ secrets.APP_ID }}
+                private-key: ${{ secrets.APP_PRIVATE_KEY }}
+            - name: Checkout repo
+              uses: actions/checkout@v6
+              with:
+                token: ${{ steps.app-token.outputs.token }}
                 fetch-depth: 0
             - name: Setup Python
-              uses: actions/setup-python@v5
+              uses: actions/setup-python@v6
               with:
                 python-version: 3.13
             - name: Build changelog
@@ -31,21 +37,23 @@ jobs:
                 python .github/bump_version.py
                 towncrier build --yes --version $(python -c "import re; print(re.search(r'version = \"(.+?)\"', open('pyproject.toml').read()).group(1))")
             - name: Update changelog
-              uses: EndBug/add-and-commit@v9
+              uses: EndBug/add-and-commit@v10
               with:
                 add: "."
                 message: Update package version
+                github_token: ${{ steps.app-token.outputs.token }}
+                fetch: false
     publish-to-pypi:
       name: Publish to PyPI
       if: (github.event.head_commit.message == 'Update package version')
       runs-on: ubuntu-latest
       steps:
         - name: Checkout code
-          uses: actions/checkout@v4
+          uses: actions/checkout@v6
           with:
             fetch-depth: 0 # Fetch all history for all tags and branches
         - name: Set up Python
-          uses: actions/setup-python@v5
+          uses: actions/setup-python@v6
           with:
             python-version: 3.13
         - name: Install package
