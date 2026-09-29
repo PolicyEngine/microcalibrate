@@ -3,7 +3,9 @@
 import { useState } from 'react';
 import { CalibrationDataPoint } from '@/types/calibration';
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { colors } from '@policyengine/design-system/tokens/colors';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import ToggleLegend from '@/components/ToggleLegend';
 
 interface CalibrationSummaryProps {
   data: CalibrationDataPoint[];
@@ -157,32 +159,6 @@ export default function CalibrationSummary({ data }: CalibrationSummaryProps) {
       ...prev,
       [dataKey]: !prev[dataKey as keyof typeof prev]
     }));
-  };
-
-  const CustomLegend = (props: { payload?: Array<{ dataKey: string; color: string; value: string }> }) => {
-    const { payload } = props;
-    return (
-      <div className="flex justify-center items-center space-x-6 pt-4">
-        {payload?.map((entry, index: number) => {
-          const isVisible = visibleLines[entry.dataKey as keyof typeof visibleLines];
-          return (
-            <div
-              key={`legend-${index}`}
-              className={`flex items-center cursor-pointer ${
-                isVisible ? 'opacity-100' : 'opacity-50'
-              }`}
-              onClick={() => handleLegendClick(entry.dataKey)}
-            >
-              <div
-                className="w-3 h-0.5 mr-2"
-                style={{ backgroundColor: isVisible ? entry.color : '#ccc' }}
-              />
-              <span className="text-sm text-gray-700">{entry.value}</span>
-            </div>
-          );
-        })}
-      </div>
-    );
   };
 
   return (
@@ -382,12 +358,16 @@ export default function CalibrationSummary({ data }: CalibrationSummaryProps) {
                   }}
                   labelFormatter={(label) => `Epoch: ${label}`}
                 />
-                <Legend content={<CustomLegend />} />
+                <Legend
+                  content={
+                    <ToggleLegend visibleSeries={visibleLines} onToggleSeries={handleLegendClick} />
+                  }
+                />
                 <Line 
                   yAxisId="loss"
                   type="monotone" 
                   dataKey="totalLoss" 
-                  stroke={visibleLines.totalLoss ? "#dc2626" : "transparent"}
+                  stroke={visibleLines.totalLoss ? colors.error : "transparent"}
                   strokeWidth={2}
                   dot={visibleLines.totalLoss ? { r: 3 } : false}
                   activeDot={visibleLines.totalLoss ? { r: 5 } : false}
@@ -398,7 +378,7 @@ export default function CalibrationSummary({ data }: CalibrationSummaryProps) {
                   yAxisId="error"
                   type="monotone" 
                   dataKey="avgRelAbsError" 
-                  stroke={visibleLines.avgRelAbsError ? "#7c3aed" : "transparent"}
+                  stroke={visibleLines.avgRelAbsError ? colors.primary[700] : "transparent"}
                   strokeWidth={2}
                   dot={visibleLines.avgRelAbsError ? { r: 3 } : false}
                   activeDot={visibleLines.avgRelAbsError ? { r: 5 } : false}

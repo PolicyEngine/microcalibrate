@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { CalibrationDataPoint } from '@/types/calibration';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { TrendingUp } from 'lucide-react';
+import { colors } from '@policyengine/design-system/tokens/colors';
+import ToggleLegend from '@/components/ToggleLegend';
 
 interface ComparisonChartsProps {
   firstData: CalibrationDataPoint[];
@@ -107,58 +109,6 @@ export default function ComparisonCharts({ firstData, secondData, firstName, sec
     }));
   };
 
-  const LossCustomLegend = (props: { payload?: Array<{ dataKey: string; color: string; value: string }> }) => {
-    const { payload } = props;
-    return (
-      <div className="flex justify-center items-center space-x-6 pt-4">
-        {payload?.map((entry, index: number) => {
-          const isVisible = visibleLossLines[entry.dataKey.replace('TotalLoss', '') as keyof typeof visibleLossLines];
-          return (
-            <div
-              key={`loss-legend-${index}`}
-              className={`flex items-center cursor-pointer ${
-                isVisible ? 'opacity-100' : 'opacity-50'
-              }`}
-              onClick={() => handleLossLegendClick(entry.dataKey.replace('TotalLoss', ''))}
-            >
-              <div
-                className="w-3 h-0.5 mr-2"
-                style={{ backgroundColor: isVisible ? entry.color : '#ccc' }}
-              />
-              <span className="text-sm text-gray-700">{entry.value}</span>
-            </div>
-          );
-        })}
-      </div>
-    );
-  };
-
-  const ErrorCustomLegend = (props: { payload?: Array<{ dataKey: string; color: string; value: string }> }) => {
-    const { payload } = props;
-    return (
-      <div className="flex justify-center items-center space-x-6 pt-4">
-        {payload?.map((entry, index: number) => {
-          const isVisible = visibleErrorLines[entry.dataKey.replace('AvgError', '') as keyof typeof visibleErrorLines];
-          return (
-            <div
-              key={`error-legend-${index}`}
-              className={`flex items-center cursor-pointer ${
-                isVisible ? 'opacity-100' : 'opacity-50'
-              }`}
-              onClick={() => handleErrorLegendClick(entry.dataKey.replace('AvgError', ''))}
-            >
-              <div
-                className="w-3 h-0.5 mr-2"
-                style={{ backgroundColor: isVisible ? entry.color : '#ccc' }}
-              />
-              <span className="text-sm text-gray-700">{entry.value}</span>
-            </div>
-          );
-        })}
-      </div>
-    );
-  };
-
   if (firstChartData.length === 0 && secondChartData.length === 0) {
     return null;
   }
@@ -204,11 +154,19 @@ export default function ComparisonCharts({ firstData, secondData, firstName, sec
                   }}
                   labelFormatter={(label) => `Epoch: ${label}`}
                 />
-                <Legend content={<LossCustomLegend />} />
+                <Legend
+                  content={
+                    <ToggleLegend
+                      visibleSeries={visibleLossLines}
+                      onToggleSeries={handleLossLegendClick}
+                      seriesKeySuffix="TotalLoss"
+                    />
+                  }
+                />
                 <Line 
                   type="monotone" 
                   dataKey="firstTotalLoss" 
-                  stroke={visibleLossLines.first ? "#2563eb" : "transparent"}
+                  stroke={visibleLossLines.first ? colors.blue[500] : "transparent"}
                   strokeWidth={2}
                   dot={visibleLossLines.first ? { r: 3 } : false}
                   activeDot={visibleLossLines.first ? { r: 5 } : false}
@@ -219,7 +177,7 @@ export default function ComparisonCharts({ firstData, secondData, firstName, sec
                 <Line 
                   type="monotone" 
                   dataKey="secondTotalLoss" 
-                  stroke={visibleLossLines.second ? "#7c3aed" : "transparent"}
+                  stroke={visibleLossLines.second ? colors.primary[700] : "transparent"}
                   strokeWidth={2}
                   dot={visibleLossLines.second ? { r: 3 } : false}
                   activeDot={visibleLossLines.second ? { r: 5 } : false}
@@ -264,11 +222,19 @@ export default function ComparisonCharts({ firstData, secondData, firstName, sec
                   }}
                   labelFormatter={(label) => `Epoch: ${label}`}
                 />
-                <Legend content={<ErrorCustomLegend />} />
+                <Legend
+                  content={
+                    <ToggleLegend
+                      visibleSeries={visibleErrorLines}
+                      onToggleSeries={handleErrorLegendClick}
+                      seriesKeySuffix="AvgError"
+                    />
+                  }
+                />
                 <Line 
                   type="monotone" 
                   dataKey="firstAvgError" 
-                  stroke={visibleErrorLines.first ? "#2563eb" : "transparent"}
+                  stroke={visibleErrorLines.first ? colors.blue[500] : "transparent"}
                   strokeWidth={2}
                   dot={visibleErrorLines.first ? { r: 3 } : false}
                   activeDot={visibleErrorLines.first ? { r: 5 } : false}
@@ -279,7 +245,7 @@ export default function ComparisonCharts({ firstData, secondData, firstName, sec
                 <Line 
                   type="monotone" 
                   dataKey="secondAvgError" 
-                  stroke={visibleErrorLines.second ? "#7c3aed" : "transparent"}
+                  stroke={visibleErrorLines.second ? colors.primary[700] : "transparent"}
                   strokeWidth={2}
                   dot={visibleErrorLines.second ? { r: 3 } : false}
                   activeDot={visibleErrorLines.second ? { r: 5 } : false}

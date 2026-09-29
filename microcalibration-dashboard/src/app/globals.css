@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "@policyengine/design-system/tokens.css";
 
 /* Apply Roboto Serif as default font */
 * {
@@ -19,8 +20,8 @@ pre,
 
 /* Base page styling */
 body {
-  background: #f8fafc;   /* slate-50 */
-  color: #334155;        /* slate-700 */
+  background: var(--pe-color-gray-50);
+  color: var(--pe-color-gray-700);
   font-family: var(--font-roboto-serif), serif;
   line-height: 1.5;
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import FileUpload from '@/components/FileUpload';
 import MetricsOverview from '@/components/MetricsOverview';
 import LossChart from '@/components/LossChart';
@@ -16,7 +16,7 @@ import DataTable from '@/components/DataTable';
 import ComparisonDataTable from '@/components/ComparisonDataTable';
 import { CalibrationDataPoint } from '@/types/calibration';
 import { parseCalibrationCSV } from '@/utils/csvParser';
-import { getCurrentDeeplinkParams, generateShareableUrl, DeeplinkParams } from '@/utils/deeplinks';
+import { useUrlDeeplinkParams, generateShareableUrl, DeeplinkParams } from '@/utils/deeplinks';
 import { Share } from 'lucide-react';
 
 export default function Dashboard() {
@@ -30,9 +30,12 @@ export default function Dashboard() {
   const [secondData, setSecondData] = useState<CalibrationDataPoint[]>([]);
   const [secondFilename, setSecondFilename] = useState<string>('');
   
-  // Deeplink state
-  const [deeplinkParams, setDeeplinkParams] = useState<DeeplinkParams | null>(null);
-  const [isLoadingFromDeeplink, setIsLoadingFromDeeplink] = useState<boolean>(false);
+  // Deeplink state: the URL's deeplink is loaded until a finished load or a
+  // reset overrides it (the override is undefined until then)
+  const urlDeeplinkParams = useUrlDeeplinkParams();
+  const [deeplinkOverride, setDeeplinkOverride] = useState<DeeplinkParams | null>();
+  const deeplinkParams = deeplinkOverride === undefined ? urlDeeplinkParams : deeplinkOverride;
+  const isLoadingFromDeeplink = deeplinkOverride === undefined && urlDeeplinkParams !== null;
   
   // GitHub artifact state for sharing
   const [githubArtifactInfo, setGithubArtifactInfo] = useState<DeeplinkParams | null>(null);
@@ -82,15 +85,6 @@ export default function Dashboard() {
       setShowDashboard(false);
     }
   };
-
-  // Check for deeplink parameters on mount
-  useEffect(() => {
-    const params = getCurrentDeeplinkParams();
-    if (params) {
-      setDeeplinkParams(params);
-      setIsLoadingFromDeeplink(true);
-    }
-  }, []);
 
   // Generate shareable URL for current dashboard state
   const generateShareUrl = (): string => {
@@ -164,9 +158,8 @@ export default function Dashboard() {
               isLoadingFromDeeplink={isLoadingFromDeeplink}
               onDeeplinkLoadComplete={(primary, secondary) => {
                 const params = { mode: secondary ? 'comparison' : 'single', primary, secondary } as DeeplinkParams;
-                setDeeplinkParams(params);
+                setDeeplinkOverride(params);
                 setGithubArtifactInfo(params);
-                setIsLoadingFromDeeplink(false);
                 // Automatically show dashboard when loading from deeplink
                 if (primary) {
                   setShowDashboard(true);
@@ -202,8 +195,7 @@ export default function Dashboard() {
                   setComparisonMode(false);
                   setError('');
                   setShowDashboard(false);
-                  setDeeplinkParams(null);
-                  setIsLoadingFromDeeplink(false);
+                  setDeeplinkOverride(null);
                   setGithubArtifactInfo(null);
                 }}
                 className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium"

@@ -2,6 +2,7 @@
 
 import { CalibrationDataPoint } from '@/types/calibration';
 import { ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
+import { colors } from '@policyengine/design-system/tokens/colors';
 
 interface RegressionAnalysisProps {
   firstData: CalibrationDataPoint[];
@@ -205,7 +206,7 @@ export default function RegressionAnalysis({ firstData, secondData }: Regression
               {/* Equality line (y = x) */}
               <ReferenceLine 
                 segment={[{ x: domain[0], y: domain[0] }, { x: domain[1], y: domain[1] }]}
-                stroke="#94a3b8" 
+                stroke={colors.gray[400]} 
                 strokeDasharray="5 5"
                 strokeWidth={2}
               />
@@ -214,7 +215,7 @@ export default function RegressionAnalysis({ firstData, secondData }: Regression
               <Scatter 
                 name="Targets" 
                 data={scatterData} 
-                fill="#3b82f6"
+                fill={colors.blue[500]}
                 fillOpacity={0.6}
                 r={3}
               />

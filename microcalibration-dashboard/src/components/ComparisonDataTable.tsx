@@ -22,6 +22,76 @@ type SortField = keyof CalibrationDataPoint | 'random' | 'difference';
 type SortDataset = 'first' | 'second' | null;
 type SortDirection = 'asc' | 'desc';
 
+interface SortState {
+  sortField: SortField;
+  sortDataset: SortDataset;
+  sortDirection: SortDirection;
+  onSort: (field: keyof CalibrationDataPoint | 'difference', dataset?: 'first' | 'second') => void;
+}
+
+interface SortButtonProps extends SortState {
+  field: keyof CalibrationDataPoint | 'difference';
+  children: React.ReactNode;
+  dataset?: 'first' | 'second';
+}
+
+function SortButton({ field, children, dataset, sortField, sortDataset, sortDirection, onSort }: SortButtonProps) {
+  const isActive = (field === 'target_name' || field === 'difference') 
+    ? (sortField === field && sortDataset === null)
+    : (sortField === field && sortDataset === dataset);
+  
+  return (
+    <div className="flex items-center gap-1">
+      <span>{children}</span>
+      <button
+        onClick={() => onSort(field, dataset)}
+        className={`flex flex-col items-center justify-center w-4 h-6 transition-colors ${
+          isActive ? 'text-blue-600' : 'text-gray-400 hover:text-gray-600'
+        }`}
+      >
+        <span className={`text-xs leading-none ${
+          isActive && sortDirection === 'asc' ? 'text-blue-600' : 'text-gray-300'
+        }`}>▲</span>
+        <span className={`text-xs leading-none ${
+          isActive && sortDirection === 'desc' ? 'text-blue-600' : 'text-gray-300'
+        }`}>▼</span>
+      </button>
+    </div>
+  );
+}
+
+interface DatasetSortButtonProps extends SortState {
+  field: keyof CalibrationDataPoint;
+  dataset: 'first' | 'second';
+  children: React.ReactNode;
+}
+
+function DatasetSortButton({ field, dataset, children, sortField, sortDataset, sortDirection, onSort }: DatasetSortButtonProps) {
+  const isActive = sortField === field && sortDataset === dataset;
+  const isFirst = dataset === 'first';
+  const colorClass = isFirst ? 'text-blue-600' : 'text-purple-600';
+  
+  return (
+    <div className="flex items-center justify-center gap-1">
+      <span className={`text-xs font-medium ${colorClass}`}>{children}</span>
+      <button
+        onClick={() => onSort(field, dataset)}
+        className={`flex flex-col items-center justify-center w-4 h-6 transition-colors ${
+          isActive ? colorClass : 'text-gray-400 hover:text-gray-600'
+        }`}
+        title={`Sort by ${field} for ${isFirst ? 'first' : 'second'} dataset`}
+      >
+        <span className={`text-xs leading-none ${
+          isActive && sortDirection === 'asc' ? colorClass : 'text-gray-300'
+        }`}>▲</span>
+        <span className={`text-xs leading-none ${
+          isActive && sortDirection === 'desc' ? colorClass : 'text-gray-300'
+        }`}>▼</span>
+      </button>
+    </div>
+  );
+}
+
 export default function ComparisonDataTable({ 
   firstData, 
   secondData, 
@@ -198,64 +268,7 @@ export default function ComparisonDataTable({
     }
   };
 
-  const SortButton = ({ field, children, dataset }: { 
-    field: keyof CalibrationDataPoint | 'difference', 
-    children: React.ReactNode, 
-    dataset?: 'first' | 'second'
-  }) => {
-    const isActive = (field === 'target_name' || field === 'difference') 
-      ? (sortField === field && sortDataset === null)
-      : (sortField === field && sortDataset === dataset);
-    
-    return (
-      <div className="flex items-center gap-1">
-        <span>{children}</span>
-        <button
-          onClick={() => handleSort(field, dataset)}
-          className={`flex flex-col items-center justify-center w-4 h-6 transition-colors ${
-            isActive ? 'text-blue-600' : 'text-gray-400 hover:text-gray-600'
-          }`}
-        >
-          <span className={`text-xs leading-none ${
-            isActive && sortDirection === 'asc' ? 'text-blue-600' : 'text-gray-300'
-          }`}>▲</span>
-          <span className={`text-xs leading-none ${
-            isActive && sortDirection === 'desc' ? 'text-blue-600' : 'text-gray-300'
-          }`}>▼</span>
-        </button>
-      </div>
-    );
-  };
-
-  const DatasetSortButton = ({ field, dataset, children }: {
-    field: keyof CalibrationDataPoint,
-    dataset: 'first' | 'second',
-    children: React.ReactNode
-  }) => {
-    const isActive = sortField === field && sortDataset === dataset;
-    const isFirst = dataset === 'first';
-    const colorClass = isFirst ? 'text-blue-600' : 'text-purple-600';
-    
-    return (
-      <div className="flex items-center justify-center gap-1">
-        <span className={`text-xs font-medium ${colorClass}`}>{children}</span>
-        <button
-          onClick={() => handleSort(field, dataset)}
-          className={`flex flex-col items-center justify-center w-4 h-6 transition-colors ${
-            isActive ? colorClass : 'text-gray-400 hover:text-gray-600'
-          }`}
-          title={`Sort by ${field} for ${isFirst ? 'first' : 'second'} dataset`}
-        >
-          <span className={`text-xs leading-none ${
-            isActive && sortDirection === 'asc' ? colorClass : 'text-gray-300'
-          }`}>▲</span>
-          <span className={`text-xs leading-none ${
-            isActive && sortDirection === 'desc' ? colorClass : 'text-gray-300'
-          }`}>▼</span>
-        </button>
-      </div>
-    );
-  };
+  const sortProps = { sortField, sortDataset, sortDirection, onSort: handleSort };
 
   const formatValue = (value: number | undefined | null) => {
     if (value === undefined || value === null || isNaN(value)) {
@@ -397,7 +410,7 @@ export default function ComparisonDataTable({
           <thead>
             <tr className="border-b border-gray-300 bg-gray-50">
               <th className="text-left py-3 px-4 font-semibold text-gray-700" rowSpan={2}>
-                <SortButton field="target_name">Target name</SortButton>
+                <SortButton field="target_name" {...sortProps}>Target name</SortButton>
               </th>
               <th className="text-center py-2 px-4 font-semibold text-gray-700 border-b border-gray-200" colSpan={2}>
                 Target value
@@ -428,17 +441,17 @@ export default function ComparisonDataTable({
               <th className="text-center py-2 px-2 text-xs font-medium text-blue-600">A</th>
               <th className="text-center py-2 px-2 text-xs font-medium text-purple-600">B</th>
               <th className="text-center py-2 px-2">
-                <DatasetSortButton field="rel_abs_error" dataset="first">
+                <DatasetSortButton field="rel_abs_error" dataset="first" {...sortProps}>
                   A
                 </DatasetSortButton>
               </th>
               <th className="text-center py-2 px-2">
-                <DatasetSortButton field="rel_abs_error" dataset="second">
+                <DatasetSortButton field="rel_abs_error" dataset="second" {...sortProps}>
                   B
                 </DatasetSortButton>
               </th>
               <th className="text-center py-2 px-5">
-                <SortButton field="difference">(B-A)</SortButton>
+                <SortButton field="difference" {...sortProps}>(B-A)</SortButton>
               </th>
             </tr>
           </thead>

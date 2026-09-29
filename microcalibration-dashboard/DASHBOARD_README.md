@@ -6,7 +6,8 @@ A dashboard for visualizing microcalibrate training logs. This Next.js applicati
 
 ### Prerequisites
 
-- Node.js 18+ and npm
+- [Bun](https://bun.sh) (the version pinned in `package.json`'s `packageManager` field) to install dependencies and run scripts
+- Node.js 22 (22.12 or later), 24, or 26+, the lines Vitest 5 supports (Next.js, ESLint and Vitest run on Node)
 
 ### Installation
 
@@ -67,21 +68,34 @@ Example:
 
 A sample CSV file is included in the `public/` directory for testing purposes.
 
-## Building for production
+## Checks
 
 ```bash
-make dashboard-build
-make dahsboard-start
+make dashboard-check
+```
+
+Runs ESLint, the Vitest suite and the static export build; CI runs the same target on every pull request.
+
+## Building for production
+
+The dashboard is a static export (`output: 'export'`), written to `out/`:
+
+```bash
+make dashboard-static   # build into out/
+make dashboard-start    # serve the last build locally
+make dashboard-preview  # both
 ```
 
 ## Technology stack
 
-- **Next.js 15**: React framework with App Router
+- **Next.js 16**: React framework with App Router
 - **TypeScript**: Type safety and better development experience
 - **Tailwind CSS**: Utility-first CSS framework
 - **Recharts**: Interactive charts built on D3
 - **Papa Parse**: CSV parsing library
 - **Lucide React**: Modern icon library
+- **PolicyEngine design system**: Color tokens for charts and page styles
+- **Vitest** and **fast-check**: Unit and property-based tests
 
 ## Contributing
 
