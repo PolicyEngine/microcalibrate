@@ -2,10 +2,10 @@
   "name": "microcalibration-dashboard",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "bun@1.4.2",
   "scripts": {
-    "dev": "next dev --turbopack",
+    "dev": "next dev",
     "build": "next build",
-    "export": "next build && next export",
     "start": "next start",
     "lint": "eslint .",
     "static": "next build && touch out/.nojekyll",

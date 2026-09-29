@@ -32,25 +32,25 @@ changelog:
 	python .github/bump_version.py
 	towncrier build --yes --version $$(python -c "import re; print(re.search(r'version = \"(.+?)\"', open('pyproject.toml').read()).group(1))")
 dashboard-install:
-	cd microcalibration-dashboard && npm install
+	cd microcalibration-dashboard && bun install --frozen-lockfile
 
 dashboard-dev:
-	cd microcalibration-dashboard && npm run dev
+	cd microcalibration-dashboard && bun run dev
 
 dashboard-build:
-	cd microcalibration-dashboard && npm run build
+	cd microcalibration-dashboard && bun run build
 
 dashboard-start:
-	cd microcalibration-dashboard && npm start
+	cd microcalibration-dashboard && bun run start
 
 dashboard-clean:
-	cd microcalibration-dashboard && rm -rf .next node_modules
+	cd microcalibration-dashboard && rm -rf .next out node_modules
 
 dashboard-static:
-	cd microcalibration-dashboard && npm run static
+	cd microcalibration-dashboard && bun run static
 
 dashboard-preview:
-	cd microcalibration-dashboard && npm run static && npx serve out
+	cd microcalibration-dashboard && bun run static && bunx serve out
 
 dashboard-check:
-	cd microcalibration-dashboard && npm run lint && npm run static && echo "✅ Dashboard ready for GitHub Pages deployment"
+	cd microcalibration-dashboard && bun run lint && bun run test && bun run static && echo "✅ Dashboard ready for GitHub Pages deployment"
