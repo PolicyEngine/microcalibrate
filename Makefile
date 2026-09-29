@@ -41,7 +41,7 @@ dashboard-build:
 	cd microcalibration-dashboard && bun run build
 
 dashboard-start:
-	cd microcalibration-dashboard && bun run start
+	cd microcalibration-dashboard && bunx serve out
 
 dashboard-clean:
 	cd microcalibration-dashboard && rm -rf .next out node_modules

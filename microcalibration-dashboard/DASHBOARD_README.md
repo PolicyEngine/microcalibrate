@@ -81,8 +81,9 @@ Runs ESLint, the Vitest suite and the static export build; CI runs the same targ
 The dashboard is a static export (`output: 'export'`), written to `out/`:
 
 ```bash
-make dashboard-static
-make dashboard-preview  # build, then serve out/ locally
+make dashboard-static   # build into out/
+make dashboard-start    # serve the last build locally
+make dashboard-preview  # both
 ```
 
 ## Technology stack
