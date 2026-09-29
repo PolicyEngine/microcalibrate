@@ -1,1 +1,1 @@
-Upgraded the dashboard to Next.js 16 and Bun, replaced the removed `next lint` with the ESLint CLI, and added a dashboard lint, test and static-build job to pull request CI.
+Upgraded the dashboard to Next.js 16 and Bun, switched its chart and page colors to @policyengine/design-system tokens, replaced the removed `next lint` with the ESLint CLI, and added Vitest property tests plus a dashboard lint, test and static-build job to pull request CI.

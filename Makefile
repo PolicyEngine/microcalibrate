@@ -41,7 +41,7 @@ dashboard-build:
 	cd microcalibration-dashboard && bun run build
 
 dashboard-start:
-	cd microcalibration-dashboard && bunx serve out
+	cd microcalibration-dashboard && bunx serve@14.2.6 out
 
 dashboard-clean:
 	cd microcalibration-dashboard && rm -rf .next out node_modules
@@ -50,7 +50,7 @@ dashboard-static:
 	cd microcalibration-dashboard && bun run static
 
 dashboard-preview:
-	cd microcalibration-dashboard && bun run static && bunx serve out
+	cd microcalibration-dashboard && bun run static && bunx serve@14.2.6 out
 
 dashboard-check:
-	cd microcalibration-dashboard && bun run lint && bun run test && bun run static && echo "✅ Dashboard ready for GitHub Pages deployment"
+	cd microcalibration-dashboard && bun run lint && bun run test && bun run static && echo "✅ Dashboard lint, tests and static build passed"

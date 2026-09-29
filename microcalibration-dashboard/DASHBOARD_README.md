@@ -7,7 +7,7 @@ A dashboard for visualizing microcalibrate training logs. This Next.js applicati
 ### Prerequisites
 
 - [Bun](https://bun.sh) (the version pinned in `package.json`'s `packageManager` field) to install dependencies and run scripts
-- Node.js 22.12+ (Next.js, ESLint and Vitest run on Node)
+- Node.js 22 (22.12 or later), 24, or 26+, the lines Vitest 5 supports (Next.js, ESLint and Vitest run on Node)
 
 ### Installation
 
