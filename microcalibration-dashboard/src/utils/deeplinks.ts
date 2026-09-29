@@ -1,3 +1,5 @@
+import { useMemo, useSyncExternalStore } from 'react';
+
 export interface GitHubArtifactInfo {
   repo: string;
   branch: string;
@@ -83,9 +85,22 @@ export function generateShareableUrl(params: DeeplinkParams): string {
   return encoded ? `${baseUrl}?${encoded}` : baseUrl;
 }
 
-export function getCurrentDeeplinkParams(): DeeplinkParams | null {
-  if (typeof window === 'undefined') return null;
-  
-  const searchParams = new URLSearchParams(window.location.search);
-  return decodeDeeplink(searchParams);
+// The dashboard never rewrites its URL after load, so there is nothing to
+// subscribe to.
+const subscribeToUrl = () => () => {};
+const getUrlSearch = () => window.location.search;
+// Prerendering (static export) has no URL.
+const getPrerenderUrlSearch = () => null;
+
+/**
+ * Deeplink parameters in the page URL. Null while prerendering and during
+ * hydration, so the static HTML matches; React re-renders with the real URL
+ * right after hydrating.
+ */
+export function useUrlDeeplinkParams(): DeeplinkParams | null {
+  const search = useSyncExternalStore(subscribeToUrl, getUrlSearch, getPrerenderUrlSearch);
+  return useMemo(
+    () => (search === null ? null : decodeDeeplink(new URLSearchParams(search))),
+    [search]
+  );
 }

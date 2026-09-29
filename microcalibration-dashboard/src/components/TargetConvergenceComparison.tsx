@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, ReferenceLine, BarChart, Bar } from 'recharts';
 import { CalibrationDataPoint } from '@/types/calibration';
 import { Target } from 'lucide-react';
 import { sortTargetNames, sortTargetsWithRelevance } from '@/utils/targetOrdering';
+import { getEpochsNewestFirst, resolveSelectedEpoch } from '@/utils/epochs';
 import { colors } from '@policyengine/design-system/tokens/colors';
 
 interface TargetConvergenceComparisonProps {
@@ -53,33 +54,17 @@ export default function TargetConvergenceComparison({
   });
 
   // Bar chart states
-  const [selectedEpoch, setSelectedEpoch] = useState<number | null>(null);
+  const [chosenEpoch, setChosenEpoch] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [currentPage, setCurrentPage] = useState<number>(0);
   const [showTargetLabels, setShowTargetLabels] = useState<boolean>(false);
   const MAX_DISPLAYED_TARGETS = 15;
 
-  // Initialize bar chart selections
-  useEffect(() => {
-    // Get all available epochs from both datasets
-    const allEpochs = new Set([
-      ...firstData.map(d => d.epoch),
-      ...secondData.map(d => d.epoch)
-    ]);
-    const sortedEpochs = Array.from(allEpochs).sort((a, b) => b - a);
-    
-    // Set default epoch to the latest
-    if (sortedEpochs.length > 0 && selectedEpoch === null) {
-      setSelectedEpoch(sortedEpochs[0]);
-    }
+  // Get available epochs from both datasets
+  const availableEpochs = getEpochsNewestFirst(firstData, secondData);
 
-    // No need to set default targets anymore - handled by search/pagination
-  }, [firstData, secondData, allTargets, selectedEpoch]);
-
-  // Reset page when search changes
-  useEffect(() => {
-    setCurrentPage(0);
-  }, [searchQuery]);
+  // Show the latest epoch until the user picks one
+  const selectedEpoch = resolveSelectedEpoch(chosenEpoch, availableEpochs);
 
   if (allTargets.length === 0) {
     return (
@@ -184,12 +169,6 @@ export default function TargetConvergenceComparison({
   };
 
   const barChartData = prepareBarChartData();
-
-  // Get available epochs
-  const availableEpochs = Array.from(new Set([
-    ...firstData.map(d => d.epoch),
-    ...secondData.map(d => d.epoch)
-  ])).sort((a, b) => b - a);
 
   const formatValueCompact = (value: number) => {
     if (value === 0) return '0';
@@ -649,8 +628,8 @@ export default function TargetConvergenceComparison({
               </label>
               <select
                 id="epoch-select"
-                value={selectedEpoch || ''}
-                onChange={(e) => setSelectedEpoch(Number(e.target.value))}
+                value={selectedEpoch ?? ''}
+                onChange={(e) => setChosenEpoch(Number(e.target.value))}
                 className="border border-gray-300 rounded-md px-2 py-1 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 {availableEpochs.map(epoch => (
@@ -693,7 +672,11 @@ export default function TargetConvergenceComparison({
               type="text"
               placeholder="Search targets by name..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                // Reset page when search changes
+                setCurrentPage(0);
+              }}
               className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
           </div>

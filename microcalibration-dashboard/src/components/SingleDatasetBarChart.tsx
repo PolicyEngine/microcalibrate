@@ -1,18 +1,19 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { CalibrationDataPoint } from '@/types/calibration';
 import { BarChart3 } from 'lucide-react';
 import { colors } from '@policyengine/design-system/tokens/colors';
 import { sortTargetsWithRelevance, getSortedUniqueTargets } from '@/utils/targetOrdering';
+import { getEpochsNewestFirst, resolveSelectedEpoch } from '@/utils/epochs';
 
 interface SingleDatasetBarChartProps {
   data: CalibrationDataPoint[];
 }
 
 export default function SingleDatasetBarChart({ data }: SingleDatasetBarChartProps) {
-  const [selectedEpoch, setSelectedEpoch] = useState<number | null>(null);
+  const [chosenEpoch, setChosenEpoch] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [currentPage, setCurrentPage] = useState<number>(0);
   const [showTargetLabels, setShowTargetLabels] = useState<boolean>(false);
@@ -22,19 +23,10 @@ export default function SingleDatasetBarChart({ data }: SingleDatasetBarChartPro
   const allTargets = getSortedUniqueTargets(data);
 
   // Get all available epochs
-  const availableEpochs = Array.from(new Set(data.map(d => d.epoch))).sort((a, b) => b - a);
+  const availableEpochs = getEpochsNewestFirst(data);
 
-  // Initialize selected epoch to the latest
-  useEffect(() => {
-    if (availableEpochs.length > 0 && selectedEpoch === null) {
-      setSelectedEpoch(availableEpochs[0]);
-    }
-  }, [availableEpochs, selectedEpoch]);
-
-  // Reset page when search changes
-  useEffect(() => {
-    setCurrentPage(0);
-  }, [searchQuery]);
+  // Show the latest epoch until the user picks one
+  const selectedEpoch = resolveSelectedEpoch(chosenEpoch, availableEpochs);
 
   if (data.length === 0) {
     return (
@@ -130,8 +122,8 @@ export default function SingleDatasetBarChart({ data }: SingleDatasetBarChartPro
               </label>
               <select
                 id="epoch-select"
-                value={selectedEpoch || ''}
-                onChange={(e) => setSelectedEpoch(Number(e.target.value))}
+                value={selectedEpoch ?? ''}
+                onChange={(e) => setChosenEpoch(Number(e.target.value))}
                 className="border border-gray-300 rounded-md px-2 py-1 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 {availableEpochs.map(epoch => (
@@ -174,7 +166,11 @@ export default function SingleDatasetBarChart({ data }: SingleDatasetBarChartPro
               type="text"
               placeholder="Search targets by name..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                // Reset page when search changes
+                setCurrentPage(0);
+              }}
               className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
           </div>

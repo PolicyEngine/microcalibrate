@@ -8,6 +8,33 @@ interface DataTableProps {
   data: CalibrationDataPoint[];
 }
 
+type SortField = keyof CalibrationDataPoint | 'random';
+type SortDirection = 'asc' | 'desc';
+
+interface SortButtonProps {
+  field: keyof CalibrationDataPoint;
+  sortField: SortField;
+  sortDirection: SortDirection;
+  onSort: (field: keyof CalibrationDataPoint) => void;
+  children: React.ReactNode;
+}
+
+function SortButton({ field, sortField, sortDirection, onSort, children }: SortButtonProps) {
+  return (
+    <button
+      onClick={() => onSort(field)}
+      className="text-left hover:text-gray-900 transition-colors flex items-center"
+    >
+      {children}
+      {sortField === field && (
+        <span className="ml-1 text-blue-600">
+          {sortDirection === 'asc' ? '↑' : '↓'}
+        </span>
+      )}
+    </button>
+  );
+}
+
 export default function DataTable({ data }: DataTableProps) {
   // Find max epoch safely
   const maxEpoch = data.length > 0 ? data.reduce((max, item) => Math.max(max, item.epoch), 0) : 0;
@@ -15,8 +42,8 @@ export default function DataTable({ data }: DataTableProps) {
   // Get unique epochs
   const allEpochs = Array.from(new Set(data.map(item => item.epoch))).sort((a, b) => a - b);
   
-  const [sortField, setSortField] = useState<keyof CalibrationDataPoint | 'random'>('target_name');
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [sortField, setSortField] = useState<SortField>('target_name');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const [filter, setFilter] = useState('');
   const [epochFilter, setEpochFilter] = useState(maxEpoch);
   const [currentPage, setCurrentPage] = useState(1);
@@ -85,19 +112,7 @@ export default function DataTable({ data }: DataTableProps) {
     }
   };
 
-  const SortButton = ({ field, children }: { field: keyof CalibrationDataPoint, children: React.ReactNode }) => (
-    <button
-      onClick={() => handleSort(field)}
-      className="text-left hover:text-gray-900 transition-colors flex items-center"
-    >
-      {children}
-      {sortField === field && (
-        <span className="ml-1 text-blue-600">
-          {sortDirection === 'asc' ? '↑' : '↓'}
-        </span>
-      )}
-    </button>
-  );
+  const sortProps = { sortField, sortDirection, onSort: handleSort };
 
   const formatValue = (value: number | undefined | null) => {
     if (value === undefined || value === null || isNaN(value)) {
@@ -155,22 +170,22 @@ export default function DataTable({ data }: DataTableProps) {
           <thead>
             <tr className="border-b border-gray-300 bg-gray-50">
               <th className="text-left py-3 px-4 font-semibold text-gray-700">
-                <SortButton field="target_name">Target name</SortButton>
+                <SortButton field="target_name" {...sortProps}>Target name</SortButton>
               </th>
               <th className="text-right py-3 px-4 font-semibold text-gray-700">
-                <SortButton field="target">Target value</SortButton>
+                <SortButton field="target" {...sortProps}>Target value</SortButton>
               </th>
               <th className="text-right py-3 px-4 font-semibold text-gray-700">
-                <SortButton field="estimate">Estimate</SortButton>
+                <SortButton field="estimate" {...sortProps}>Estimate</SortButton>
               </th>
               <th className="text-right py-3 px-4 font-semibold text-gray-700">
-                <SortButton field="error">Error</SortButton>
+                <SortButton field="error" {...sortProps}>Error</SortButton>
               </th>
               <th className="text-right py-3 px-4 font-semibold text-gray-700">
-                <SortButton field="abs_error">Abs error</SortButton>
+                <SortButton field="abs_error" {...sortProps}>Abs error</SortButton>
               </th>
               <th className="text-right py-3 px-4 font-semibold text-gray-700">
-                <SortButton field="rel_abs_error">Rel abs error %</SortButton>
+                <SortButton field="rel_abs_error" {...sortProps}>Rel abs error %</SortButton>
               </th>
             </tr>
           </thead>
