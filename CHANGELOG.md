@@ -1,3 +1,10 @@
+## [0.22.2] - 2026-09-29
+
+### Changed
+
+- Upgraded the dashboard to Next.js 16 and Bun, switched its chart and page colors to @policyengine/design-system tokens, replaced the removed `next lint` with the ESLint CLI, and added Vitest property tests plus a dashboard lint, test and static-build job to pull request CI.
+
+
 ## [0.22.1] - 2026-04-28
 
 ### Changed
