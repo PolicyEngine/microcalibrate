@@ -14,15 +14,19 @@ const point = (epoch: number, target_name = 't'): CalibrationDataPoint => ({
   rel_abs_error: 0,
 });
 
+// Epoch 0 is drawn often: falsy epochs are where `||`-style defaults break.
+const epochArb = fc.oneof(fc.constant(0), fc.nat({ max: 50 }));
+
 const datasetArb = fc.array(
-  fc.record({ epoch: fc.nat({ max: 50 }), target_name: fc.string({ maxLength: 3 }) }),
+  fc.record({ epoch: epochArb, target_name: fc.string({ maxLength: 3 }) }),
   { maxLength: 30 }
 ).map(rows => rows.map(r => point(r.epoch, r.target_name)));
 
 const datasetsArb = fc.array(datasetArb, { maxLength: 3 });
 
 // The effect this replaced: selected epoch starts null, and after each
-// render an effect adopts the newest epoch if nothing is selected yet.
+// render an effect adopts the newest epoch if nothing is selected yet. Models
+// a chart whose data stays fixed while it is mounted.
 function effectModelEpoch(chosen: Array<number | null>, epochsNewestFirst: number[]): number | null {
   let selected: number | null = null;
   const settle = () => {
@@ -91,11 +95,11 @@ describe('resolveSelectedEpoch', () => {
     expect(resolveSelectedEpoch(null, getEpochsNewestFirst([point(0)]))).toBe(0);
   });
 
-  it('matches the effect-based default it replaced for any sequence of picks', () => {
+  it('matches the effect-based default it replaced for any sequence of picks on fixed data', () => {
     fc.assert(
       fc.property(
         datasetsArb,
-        fc.array(fc.option(fc.nat({ max: 50 }), { nil: null }), { maxLength: 5 }),
+        fc.array(fc.option(epochArb, { nil: null }), { maxLength: 5 }),
         (datasets, picks) => {
           const epochs = getEpochsNewestFirst(...datasets);
           // The derived version stores only the latest real pick.
@@ -104,5 +108,17 @@ describe('resolveSelectedEpoch', () => {
         }
       )
     );
+  });
+
+  // Intended change: the effect adopted the newest epoch once and kept it, so
+  // if new data arrived while a chart stayed mounted (e.g. a load finishing
+  // after "View dashboard"), it could point at an epoch the new data lacks.
+  // The derived default follows the newest epoch of the current data.
+  it('follows new data until the user picks an epoch', () => {
+    const before = getEpochsNewestFirst([point(0), point(10)]);
+    const after = getEpochsNewestFirst([point(0), point(5)]);
+    expect(resolveSelectedEpoch(null, before)).toBe(10);
+    expect(resolveSelectedEpoch(null, after)).toBe(5);
+    expect(resolveSelectedEpoch(0, after)).toBe(0);
   });
 });

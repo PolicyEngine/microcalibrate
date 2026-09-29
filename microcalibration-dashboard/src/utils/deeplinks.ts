@@ -89,8 +89,9 @@ export function generateShareableUrl(params: DeeplinkParams): string {
 // subscribe to.
 const subscribeToUrl = () => () => {};
 const getUrlSearch = () => window.location.search;
-// Prerendering (static export) has no URL.
-const getPrerenderUrlSearch = () => null;
+// Prerendering (static export) has no URL; an empty query string decodes to
+// no deeplink, and matching the client's '' avoids a re-render after hydration.
+const getPrerenderUrlSearch = () => '';
 
 /**
  * Deeplink parameters in the page URL. Null while prerendering and during
@@ -99,8 +100,5 @@ const getPrerenderUrlSearch = () => null;
  */
 export function useUrlDeeplinkParams(): DeeplinkParams | null {
   const search = useSyncExternalStore(subscribeToUrl, getUrlSearch, getPrerenderUrlSearch);
-  return useMemo(
-    () => (search === null ? null : decodeDeeplink(new URLSearchParams(search))),
-    [search]
-  );
+  return useMemo(() => decodeDeeplink(new URLSearchParams(search)), [search]);
 }
